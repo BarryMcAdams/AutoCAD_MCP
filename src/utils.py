@@ -238,6 +238,49 @@ def get_autocad_instance() -> Autocad:
                                 win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, center_point),
                                 radius
                             )
+                            
+                        def AddExtrudedSolid(self, profile, height, taper_angle=0.0):
+                            """Create 3D extruded solid from 2D profile"""
+                            import win32com.client
+                            # Create a region from the profile first, then extrude
+                            regions = self.modelspace.AddRegion([profile])
+                            if regions and len(regions) > 0:
+                                region = regions[0]
+                                return self.modelspace.AddExtrudedSolid(
+                                    region,
+                                    height,
+                                    math.radians(taper_angle)
+                                )
+                            else:
+                                raise ValueError("Could not create region from profile")
+                            
+                        def AddRevolvedSolid(self, profile, axis_point, axis_vector, angle):
+                            """Create 3D revolved solid around axis"""
+                            import win32com.client
+                            # Create a region from the profile first, then revolve
+                            regions = self.modelspace.AddRegion([profile])
+                            if regions and len(regions) > 0:
+                                region = regions[0]
+                                return self.modelspace.AddRevolvedSolid(
+                                    region,
+                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_point),
+                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_vector),
+                                    angle
+                                )
+                            else:
+                                raise ValueError("Could not create region from profile")
+                            
+                        def AddPolyline(self, points):
+                            """Create 2D polyline for profiles"""
+                            import win32com.client
+                            # Flatten points for AutoCAD polyline format - needs X,Y pairs only
+                            flat_points = []
+                            for point in points:
+                                flat_points.append(float(point[0]))  # X coordinate
+                                flat_points.append(float(point[1]))  # Y coordinate
+                            return self.modelspace.AddLightWeightPolyline(
+                                win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, flat_points)
+                            )
                     
                     self.model = ModelWrapper(app.ActiveDocument.ModelSpace)
                 
@@ -248,6 +291,33 @@ def get_autocad_instance() -> Autocad:
                 @Visible.setter
                 def Visible(self, value):
                     self.app.Visible = value
+                    
+                def get_entity_by_id(self, entity_id):
+                    """Get entity by ObjectID"""
+                    try:
+                        # Search through all entities in the document
+                        for entity in self.model.modelspace:
+                            if entity.ObjectID == entity_id:
+                                return entity
+                        return None
+                    except:
+                        return None
+                        
+                def union_solids(self, base_entity, union_entities):
+                    """Perform boolean union on solids"""
+                    result = base_entity
+                    for entity in union_entities:
+                        if entity:
+                            result = result.Boolean(0, entity)  # 0 = Union
+                    return result
+                    
+                def subtract_solids(self, base_entity, subtract_entities):
+                    """Perform boolean subtraction on solids"""
+                    result = base_entity
+                    for entity in subtract_entities:
+                        if entity:
+                            result = result.Boolean(2, entity)  # 2 = Subtract
+                    return result
             
             acad = AutocadWrapper(app)
             logger.info("Connected to AutoCAD.Application.25")
@@ -280,6 +350,49 @@ def get_autocad_instance() -> Autocad:
                                     win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, center_point),
                                     radius
                                 )
+                                
+                            def AddExtrudedSolid(self, profile, height, taper_angle=0.0):
+                                """Create 3D extruded solid from 2D profile"""
+                                import win32com.client
+                                # Create a region from the profile first, then extrude
+                                regions = self.modelspace.AddRegion([profile])
+                                if regions and len(regions) > 0:
+                                    region = regions[0]
+                                    return self.modelspace.AddExtrudedSolid(
+                                        region,
+                                        height,
+                                        math.radians(taper_angle)
+                                    )
+                                else:
+                                    raise ValueError("Could not create region from profile")
+                                
+                            def AddRevolvedSolid(self, profile, axis_point, axis_vector, angle):
+                                """Create 3D revolved solid around axis"""
+                                import win32com.client
+                                # Create a region from the profile first, then revolve
+                                regions = self.modelspace.AddRegion([profile])
+                                if regions and len(regions) > 0:
+                                    region = regions[0]
+                                    return self.modelspace.AddRevolvedSolid(
+                                        region,
+                                        win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_point),
+                                        win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_vector),
+                                        angle
+                                    )
+                                else:
+                                    raise ValueError("Could not create region from profile")
+                                
+                            def AddPolyline(self, points):
+                                """Create 2D polyline for profiles"""
+                                import win32com.client
+                                # Flatten points for AutoCAD polyline format - needs X,Y pairs only
+                                flat_points = []
+                                for point in points:
+                                    flat_points.append(float(point[0]))  # X coordinate
+                                    flat_points.append(float(point[1]))  # Y coordinate
+                                return self.modelspace.AddLightWeightPolyline(
+                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, flat_points)
+                                )
                         
                         self.model = ModelWrapper(app.ActiveDocument.ModelSpace)
                     
@@ -290,6 +403,33 @@ def get_autocad_instance() -> Autocad:
                     @Visible.setter
                     def Visible(self, value):
                         self.app.Visible = value
+                        
+                    def get_entity_by_id(self, entity_id):
+                        """Get entity by ObjectID"""
+                        try:
+                            # Search through all entities in the document
+                            for entity in self.model.modelspace:
+                                if entity.ObjectID == entity_id:
+                                    return entity
+                            return None
+                        except:
+                            return None
+                            
+                    def union_solids(self, base_entity, union_entities):
+                        """Perform boolean union on solids"""
+                        result = base_entity
+                        for entity in union_entities:
+                            if entity:
+                                result = result.Boolean(0, entity)  # 0 = Union
+                        return result
+                        
+                    def subtract_solids(self, base_entity, subtract_entities):
+                        """Perform boolean subtraction on solids"""
+                        result = base_entity
+                        for entity in subtract_entities:
+                            if entity:
+                                result = result.Boolean(2, entity)  # 2 = Subtract
+                        return result
                 
                 acad = AutocadWrapper(app)
                 logger.info("Connected to AutoCAD.Application")

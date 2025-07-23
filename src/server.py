@@ -5,6 +5,7 @@ A Model Context Protocol server for AutoCAD 2025 automation.
 """
 
 import logging
+import math
 import os
 from datetime import datetime
 
@@ -385,6 +386,334 @@ def draw_rectangle():
             str(e),
             'INVALID_PARAMETERS',
             {'suggestion': 'Check that corner1 and corner2 are valid [x, y, z] coordinates'}
+        )), 400
+
+# 3D Operations (Phase 2)
+
+@app.route('/draw/extrude', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def draw_extrude():
+    """Create 3D extruded solid from 2D profile."""
+    try:
+        from .decorators import validate_json_request
+        from .utils import validate_point3d, validate_layer_name, extract_entity_properties
+    except ImportError:
+        from decorators import validate_json_request
+        from utils import validate_point3d, validate_layer_name, extract_entity_properties
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    if 'profile_points' not in data or 'height' not in data:
+        return jsonify(create_error_response(
+            'Missing required fields: profile_points and/or height',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': ['profile_points', 'height']}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        profile_points = [validate_point3d(point) for point in data['profile_points']]
+        height = float(data['height'])
+        taper_angle = float(data.get('taper_angle', 0.0))
+        layer = validate_layer_name(data.get('layer', '3D_SOLIDS'))
+        
+        if len(profile_points) < 3:
+            raise ValueError("Profile must have at least 3 points")
+        if height <= 0:
+            raise ValueError("Height must be positive")
+            
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Create profile polyline first
+        profile = acad.model.AddPolyline(profile_points)
+        profile.Closed = True
+        
+        # Create extruded solid
+        solid = acad.model.AddExtrudedSolid(profile, height, taper_angle)
+        solid.Layer = layer
+        
+        # Clean up profile polyline (optional)
+        # profile.Delete()
+        
+        # Extract entity properties
+        properties = extract_entity_properties(solid)
+        
+        logger.info(f"Created extruded solid {solid.ObjectID} (height={height}) on layer '{layer}'")
+        
+        return jsonify(create_success_response({
+            'entity_id': solid.ObjectID,
+            'entity_type': solid.ObjectName,
+            'layer': layer,
+            'height': height,
+            'taper_angle': taper_angle,
+            'volume': properties.get('volume'),
+            'properties': properties
+        }))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check that profile_points is array of [x,y,z] coordinates and height > 0'}
+        )), 400
+
+@app.route('/draw/revolve', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def draw_revolve():
+    """Create 3D revolved solid around axis."""
+    try:
+        from .decorators import validate_json_request
+        from .utils import validate_point3d, validate_layer_name, extract_entity_properties, normalize_vector
+    except ImportError:
+        from decorators import validate_json_request
+        from utils import validate_point3d, validate_layer_name, extract_entity_properties, normalize_vector
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['profile_points', 'axis_point', 'axis_vector', 'angle']
+    if not all(field in data for field in required_fields):
+        return jsonify(create_error_response(
+            f'Missing required fields: {[f for f in required_fields if f not in data]}',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': required_fields}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        profile_points = [validate_point3d(point) for point in data['profile_points']]
+        axis_point = validate_point3d(data['axis_point'])
+        axis_vector = normalize_vector(validate_point3d(data['axis_vector']))
+        angle = float(data['angle'])
+        layer = validate_layer_name(data.get('layer', '3D_SOLIDS'))
+        
+        if len(profile_points) < 3:
+            raise ValueError("Profile must have at least 3 points")
+        if not (0 < angle <= 360):
+            raise ValueError("Angle must be between 0 and 360 degrees")
+            
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Create profile polyline first
+        profile = acad.model.AddPolyline(profile_points)
+        profile.Closed = True
+        
+        # Convert angle to radians
+        angle_rad = angle * math.pi / 180.0
+        
+        # Create revolved solid
+        solid = acad.model.AddRevolvedSolid(profile, axis_point, axis_vector, angle_rad)
+        solid.Layer = layer
+        
+        # Clean up profile polyline (optional)
+        # profile.Delete()
+        
+        # Extract entity properties
+        properties = extract_entity_properties(solid)
+        
+        logger.info(f"Created revolved solid {solid.ObjectID} (angle={angle}°) on layer '{layer}'")
+        
+        return jsonify(create_success_response({
+            'entity_id': solid.ObjectID,
+            'entity_type': solid.ObjectName,
+            'layer': layer,
+            'angle': angle,
+            'axis_point': axis_point,
+            'axis_vector': axis_vector,
+            'volume': properties.get('volume'),
+            'properties': properties
+        }))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check profile_points, axis parameters, and angle (0-360)'}
+        )), 400
+
+@app.route('/draw/boolean-union', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def draw_boolean_union():
+    """Perform boolean union on multiple solids."""
+    try:
+        from .decorators import validate_json_request
+        from .utils import validate_entity_id, validate_layer_name, extract_entity_properties
+    except ImportError:
+        from decorators import validate_json_request
+        from utils import validate_entity_id, validate_layer_name, extract_entity_properties
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    if 'entity_ids' not in data:
+        return jsonify(create_error_response(
+            'Missing required field: entity_ids',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': ['entity_ids']}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        entity_ids = [validate_entity_id(eid) for eid in data['entity_ids']]
+        layer = validate_layer_name(data.get('layer', '3D_SOLIDS'))
+        
+        if len(entity_ids) < 2:
+            raise ValueError("Need at least 2 entities for union operation")
+            
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Get entities by ID
+        entities = []
+        for eid in entity_ids:
+            entity = acad.get_entity_by_id(eid)
+            if entity is None:
+                raise ValueError(f"Entity with ID {eid} not found")
+            entities.append(entity)
+        
+        # Perform union operation
+        base_entity = entities[0]
+        union_entities = entities[1:]
+        result = acad.union_solids(base_entity, union_entities)
+        result.Layer = layer
+        
+        # Extract entity properties
+        properties = extract_entity_properties(result)
+        
+        logger.info(f"Created union solid {result.ObjectID} from {len(entity_ids)} entities on layer '{layer}'")
+        
+        return jsonify(create_success_response({
+            'entity_id': result.ObjectID,
+            'entity_type': result.ObjectName,
+            'layer': layer,
+            'source_entities': entity_ids,
+            'operation': 'union',
+            'volume': properties.get('volume'),
+            'properties': properties
+        }))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check that entity_ids contains valid solid entity IDs'}
+        )), 400
+
+@app.route('/draw/boolean-subtract', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def draw_boolean_subtract():
+    """Perform boolean subtraction on solids."""
+    try:
+        from .decorators import validate_json_request
+        from .utils import validate_entity_id, validate_layer_name, extract_entity_properties
+    except ImportError:
+        from decorators import validate_json_request
+        from utils import validate_entity_id, validate_layer_name, extract_entity_properties
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['base_entity_id', 'subtract_entity_ids']
+    if not all(field in data for field in required_fields):
+        return jsonify(create_error_response(
+            f'Missing required fields: {[f for f in required_fields if f not in data]}',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': required_fields}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        base_entity_id = validate_entity_id(data['base_entity_id'])
+        subtract_entity_ids = [validate_entity_id(eid) for eid in data['subtract_entity_ids']]
+        layer = validate_layer_name(data.get('layer', '3D_SOLIDS'))
+        
+        if len(subtract_entity_ids) < 1:
+            raise ValueError("Need at least 1 entity to subtract")
+            
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Get base entity
+        base_entity = acad.get_entity_by_id(base_entity_id)
+        if base_entity is None:
+            raise ValueError(f"Base entity with ID {base_entity_id} not found")
+        
+        # Get subtract entities
+        subtract_entities = []
+        for eid in subtract_entity_ids:
+            entity = acad.get_entity_by_id(eid)
+            if entity is None:
+                raise ValueError(f"Subtract entity with ID {eid} not found")
+            subtract_entities.append(entity)
+        
+        # Perform subtraction operation
+        result = acad.subtract_solids(base_entity, subtract_entities)
+        result.Layer = layer
+        
+        # Extract entity properties
+        properties = extract_entity_properties(result)
+        
+        logger.info(f"Created subtract solid {result.ObjectID} from base {base_entity_id} on layer '{layer}'")
+        
+        return jsonify(create_success_response({
+            'entity_id': result.ObjectID,
+            'entity_type': result.ObjectName,
+            'layer': layer,
+            'base_entity_id': base_entity_id,
+            'subtract_entity_ids': subtract_entity_ids,
+            'operation': 'subtract',
+            'volume': properties.get('volume'),
+            'properties': properties
+        }))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check that all entity IDs refer to valid solid entities'}
         )), 400
 
 # Application startup
