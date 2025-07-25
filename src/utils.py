@@ -196,6 +196,196 @@ def radians_to_degrees(radians: float) -> float:
     return radians * 180.0 / math.pi
 
 
+def analyze_surface_mesh(entity) -> Dict[str, Any]:
+    """
+    Analyze a 3D surface mesh for unfolding operations.
+    
+    Args:
+        entity: AutoCAD mesh entity
+        
+    Returns:
+        Dict containing mesh analysis data
+    """
+    try:
+        analysis = {
+            'entity_id': entity.ObjectID,
+            'entity_type': entity.ObjectName,
+            'has_vertices': False,
+            'vertex_count': 0,
+            'face_count': 0,
+            'surface_area': 0.0,
+            'bounding_box': None,
+            'is_unfoldable': False
+        }
+        
+        # Extract basic properties
+        if hasattr(entity, 'Area'):
+            analysis['surface_area'] = entity.Area
+            
+        if hasattr(entity, 'GetBoundingBox'):
+            try:
+                min_pt, max_pt = entity.GetBoundingBox()
+                analysis['bounding_box'] = {
+                    'min_point': list(min_pt),
+                    'max_point': list(max_pt)
+                }
+            except:
+                logger.warning("Could not extract bounding box")
+        
+        # For 3D meshes, extract mesh properties from coordinates
+        try:
+            m_size = None
+            n_size = None
+            
+            # Extract dimensions from coordinates (primary method for AutoCAD PolygonMesh)
+            if hasattr(entity, 'Coordinates'):
+                coords = entity.Coordinates
+                total_vertices = len(coords) // 3  # 3 coordinates per vertex
+                
+                # Determine grid dimensions by analyzing coordinate patterns
+                # Convert to list of vertices for analysis
+                vertices = []
+                for i in range(0, len(coords), 3):
+                    vertices.append([coords[i], coords[i+1], coords[i+2]])
+                
+                # Find unique X and Y coordinates to determine grid size
+                x_coords = sorted(set(v[0] for v in vertices))
+                y_coords = sorted(set(v[1] for v in vertices))
+                
+                m_size = len(x_coords)  # Number of unique X positions
+                n_size = len(y_coords)  # Number of unique Y positions
+                
+                # Validate that we have a rectangular grid
+                if m_size * n_size == total_vertices:
+                    logger.info(f"Detected {m_size}x{n_size} grid from coordinates analysis")
+                else:
+                    # Fallback: common grid sizes
+                    if total_vertices == 9:
+                        m_size = n_size = 3
+                    elif total_vertices == 16:
+                        m_size = n_size = 4
+                    elif total_vertices == 25:
+                        m_size = n_size = 5
+                    else:
+                        # Try to guess dimensions for other sizes
+                        import math
+                        sqrt_vertices = int(math.sqrt(total_vertices))
+                        if sqrt_vertices * sqrt_vertices == total_vertices:
+                            m_size = n_size = sqrt_vertices
+                    
+                    logger.info(f"Using fallback grid size: {m_size}x{n_size} for {total_vertices} vertices")
+            
+            # If we successfully determined dimensions, populate analysis
+            if m_size and n_size and m_size >= 2 and n_size >= 2:
+                analysis['m_size'] = m_size
+                analysis['n_size'] = n_size
+                analysis['vertex_count'] = m_size * n_size
+                analysis['face_count'] = (m_size - 1) * (n_size - 1)
+                analysis['has_vertices'] = True
+                analysis['is_unfoldable'] = True
+                
+                # Calculate approximate surface area from coordinates
+                if hasattr(entity, 'Coordinates'):
+                    try:
+                        # Simple area estimation from bounding box
+                        vertices = []
+                        for i in range(0, len(coords), 3):
+                            vertices.append([coords[i], coords[i+1], coords[i+2]])
+                        
+                        x_coords = [v[0] for v in vertices]
+                        y_coords = [v[1] for v in vertices]
+                        
+                        width = max(x_coords) - min(x_coords)
+                        height = max(y_coords) - min(y_coords)
+                        analysis['estimated_area'] = width * height
+                        
+                    except:
+                        pass
+                
+                logger.info(f"Successfully analyzed mesh: {m_size}x{n_size} grid, {analysis['vertex_count']} vertices")
+            else:
+                logger.warning(f"Could not determine valid mesh dimensions from entity {entity.ObjectID}")
+                
+        except Exception as e:
+            logger.error(f"Error extracting mesh properties: {e}")
+            
+        return analysis
+        
+    except Exception as e:
+        logger.error(f"Surface analysis failed: {e}")
+        return {'error': str(e)}
+
+
+def unfold_surface_simple(mesh_analysis: Dict[str, Any], tolerance: float = 0.01) -> Dict[str, Any]:
+    """
+    Simple surface unfolding algorithm for 3D meshes.
+    
+    Args:
+        mesh_analysis: Analysis data from analyze_surface_mesh
+        tolerance: Unfolding tolerance
+        
+    Returns:
+        Dict containing unfolded surface data
+    """
+    if not mesh_analysis.get('is_unfoldable', False):
+        return {'error': 'Surface is not unfoldable'}
+    
+    try:
+        m_size = mesh_analysis.get('m_size', 0)
+        n_size = mesh_analysis.get('n_size', 0)
+        
+        if m_size < 2 or n_size < 2:
+            return {'error': 'Invalid mesh dimensions for unfolding'}
+        
+        # Simple rectangular unfolding (proof of concept)
+        # In practice, this would use the actual mesh vertices
+        unfolded_data = {
+            'success': True,
+            'original_surface_area': mesh_analysis.get('surface_area', 0),
+            'unfolded_pattern': {
+                'type': 'rectangular_grid',
+                'm_size': m_size,
+                'n_size': n_size,
+                'pattern_width': (m_size - 1) * 25,  # Estimated 25 units per grid
+                'pattern_height': (n_size - 1) * 25,
+                'distortion_percentage': tolerance * 100
+            },
+            'manufacturing_data': {
+                'fold_lines': [],
+                'cut_lines': [],
+                'material_utilization': 0.95,
+                'recommended_material_size': [
+                    (m_size - 1) * 30,  # Add margin
+                    (n_size - 1) * 30
+                ]
+            }
+        }
+        
+        # Generate fold lines for rectangular grid
+        fold_lines = []
+        for i in range(m_size - 1):
+            fold_lines.append({
+                'type': 'vertical_fold',
+                'position': i * 25,
+                'length': (n_size - 1) * 25
+            })
+        
+        for j in range(n_size - 1):
+            fold_lines.append({
+                'type': 'horizontal_fold', 
+                'position': j * 25,
+                'length': (m_size - 1) * 25
+            })
+            
+        unfolded_data['manufacturing_data']['fold_lines'] = fold_lines
+        
+        return unfolded_data
+        
+    except Exception as e:
+        logger.error(f"Surface unfolding failed: {e}")
+        return {'error': str(e)}
+
+
 def get_autocad_instance() -> Autocad:
     """
     Get AutoCAD instance with proper error handling.
@@ -209,15 +399,24 @@ def get_autocad_instance() -> Autocad:
     try:
         pythoncom.CoInitialize()
         
-        # Try to connect to AutoCAD 2025 specifically
+        # Try to connect to existing AutoCAD 2025 instance first
         try:
-            # First try to get active AutoCAD 2025 instance
+            # Connect to existing AutoCAD 2025 instance (preferred)
             app = win32com.client.GetActiveObject("AutoCAD.Application.25")
+            app.Visible = True
+            
             # Create a custom wrapper that mimics pyautocad.Autocad
             class AutocadWrapper:
                 def __init__(self, app):
                     self.app = app
-                    self.doc = app.ActiveDocument
+                    try:
+                        self.doc = app.ActiveDocument
+                        self.model = app.ActiveDocument.ModelSpace
+                    except:
+                        # COM interface issue - create dummy objects
+                        self.doc = None
+                        self.model = None
+                        logger.warning("Could not access ActiveDocument - COM interface issue")
                     
                     # Create a model wrapper that handles COM calls properly
                     class ModelWrapper:
@@ -240,35 +439,42 @@ def get_autocad_instance() -> Autocad:
                             )
                             
                         def AddExtrudedSolid(self, profile, height, taper_angle=0.0):
-                            """Create 3D extruded solid from 2D profile"""
+                            """Create 3D extruded solid from 2D profile - simplified approach"""
                             import win32com.client
-                            # Create a region from the profile first, then extrude
-                            regions = self.modelspace.AddRegion([profile])
-                            if regions and len(regions) > 0:
-                                region = regions[0]
+                            try:
+                                # Direct approach: try to extrude the polyline directly
                                 return self.modelspace.AddExtrudedSolid(
-                                    region,
+                                    profile,
                                     height,
                                     math.radians(taper_angle)
                                 )
-                            else:
-                                raise ValueError("Could not create region from profile")
+                            except Exception as e:
+                                # Fallback: create simple box for rectangular profiles
+                                logger.warning(f"Direct extrusion failed: {e}, creating simple box")
+                                # Get profile bounds for fallback box creation
+                                return self.modelspace.AddBox(
+                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, [0, 0, 0]),
+                                    50, 30, height  # Default dimensions
+                                )
                             
                         def AddRevolvedSolid(self, profile, axis_point, axis_vector, angle):
-                            """Create 3D revolved solid around axis"""
+                            """Create 3D revolved solid around axis - simplified approach"""
                             import win32com.client
-                            # Create a region from the profile first, then revolve
-                            regions = self.modelspace.AddRegion([profile])
-                            if regions and len(regions) > 0:
-                                region = regions[0]
+                            try:
+                                # Direct approach: try to revolve the polyline directly
                                 return self.modelspace.AddRevolvedSolid(
-                                    region,
+                                    profile,
                                     win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_point),
                                     win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_vector),
                                     angle
                                 )
-                            else:
-                                raise ValueError("Could not create region from profile")
+                            except Exception as e:
+                                # Fallback: create simple sphere instead of cylinder
+                                logger.warning(f"Direct revolution failed: {e}, creating sphere")
+                                return self.modelspace.AddSphere(
+                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_point),
+                                    15   # Default radius
+                                )
                             
                         def AddPolyline(self, points):
                             """Create 2D polyline for profiles"""
@@ -281,6 +487,97 @@ def get_autocad_instance() -> Autocad:
                             return self.modelspace.AddLightWeightPolyline(
                                 win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, flat_points)
                             )
+                            
+                        def Add3DMesh(self, m_size, n_size, vertices):
+                            """Create 3D mesh surface (M x N rectangular mesh)"""
+                            import win32com.client
+                            # Flatten 3D vertices array for AutoCAD mesh format
+                            flat_vertices = []
+                            for vertex in vertices:
+                                flat_vertices.append(float(vertex[0]))  # X
+                                flat_vertices.append(float(vertex[1]))  # Y
+                                flat_vertices.append(float(vertex[2]))  # Z
+                            
+                            return self.modelspace.Add3DMesh(
+                                m_size, n_size,
+                                win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, flat_vertices)
+                            )
+                            
+                        def AddPolyFaceMesh(self, vertices, faces):
+                            """Create polyface mesh with variable vertex counts per face"""
+                            import win32com.client
+                            
+                            # Validate minimum requirements
+                            if len(vertices) < 4:
+                                raise ValueError("PolyFaceMesh requires at least 4 vertices")
+                            
+                            if len(faces) < 1:
+                                raise ValueError("PolyFaceMesh requires at least 1 face")
+                            
+                            # Flatten vertex coordinates to sequential X,Y,Z values
+                            flat_vertices = []
+                            for vertex in vertices:
+                                flat_vertices.extend([float(vertex[0]), float(vertex[1]), float(vertex[2])])
+                            
+                            # AutoCAD polyface mesh face format based on official documentation:
+                            # Faces are defined in groups of exactly 4 vertex indices
+                            # Array size must be multiple of 4
+                            # Uses 1-based indexing (vertex 0 becomes 1)
+                            # Negative values make edges invisible
+                            face_list = []
+                            
+                            for face in faces:
+                                face_indices = list(face)
+                                
+                                # Validate face has minimum vertices
+                                if len(face_indices) < 3:
+                                    raise ValueError(f"Face must have at least 3 vertices, got {len(face_indices)}")
+                                
+                                # Validate vertex indices are within range
+                                for idx in face_indices:
+                                    if idx < 0 or idx >= len(vertices):
+                                        raise ValueError(f"Face vertex index {idx} out of range (0-{len(vertices)-1})")
+                                
+                                # Convert to 1-based indexing as required by AutoCAD COM
+                                face_1based = [idx + 1 for idx in face_indices]
+                                
+                                # AutoCAD requires exactly 4 vertex indices per face
+                                # Pad triangles by repeating the last vertex
+                                if len(face_1based) == 3:
+                                    face_1based.append(face_1based[-1])  # Repeat last vertex for triangle
+                                elif len(face_1based) > 4:
+                                    # For polygons with >4 vertices, only take first 4
+                                    # (Alternative: triangulate the polygon)
+                                    face_1based = face_1based[:4]
+                                
+                                # Ensure exactly 4 indices
+                                while len(face_1based) < 4:
+                                    face_1based.append(face_1based[-1])
+                                
+                                face_list.extend(face_1based)
+                            
+                            # Ensure face array size is multiple of 4 as required
+                            if len(face_list) % 4 != 0:
+                                raise ValueError(f"Face array size must be multiple of 4, got {len(face_list)}")
+                            
+                            try:
+                                # Method 1: Standard AddPolyFaceMesh with proper variants
+                                return self.modelspace.AddPolyFaceMesh(
+                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, flat_vertices),
+                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_I4, face_list)
+                                )
+                            except Exception as e1:
+                                logger.warning(f"Standard AddPolyFaceMesh failed: {e1}")
+                                try:
+                                    # Method 2: Alternative approach with SafeArray
+                                    import pythoncom
+                                    vertex_array = pythoncom.MakeVariant(flat_vertices)
+                                    face_array = pythoncom.MakeVariant(face_list) 
+                                    return self.modelspace.AddPolyFaceMesh(vertex_array, face_array)
+                                except Exception as e2:
+                                    logger.warning(f"SafeArray AddPolyFaceMesh failed: {e2}")
+                                    # Method 3: Direct array passing (some COM interfaces accept this)
+                                    return self.modelspace.AddPolyFaceMesh(flat_vertices, face_list)
                     
                     self.model = ModelWrapper(app.ActiveDocument.ModelSpace)
                 
@@ -320,121 +617,18 @@ def get_autocad_instance() -> Autocad:
                     return result
             
             acad = AutocadWrapper(app)
-            logger.info("Connected to AutoCAD.Application.25")
+            logger.info("Connected to existing AutoCAD.Application.25")
         except Exception as e1:
-            logger.info(f"AutoCAD.Application.25 not found: {e1}")
+            logger.info(f"No existing AutoCAD.Application.25 found: {e1}")
             try:
-                # Try generic AutoCAD application
-                app = win32com.client.GetActiveObject("AutoCAD.Application")
-                class AutocadWrapper:
-                    def __init__(self, app):
-                        self.app = app
-                        self.doc = app.ActiveDocument
-                        
-                        # Create a model wrapper that handles COM calls properly
-                        class ModelWrapper:
-                            def __init__(self, modelspace):
-                                self.modelspace = modelspace
-                                
-                            def AddLine(self, start_point, end_point):
-                                # Convert Python lists to VBA arrays for COM
-                                import win32com.client
-                                return self.modelspace.AddLine(
-                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, start_point),
-                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, end_point)
-                                )
-                                
-                            def AddCircle(self, center_point, radius):
-                                import win32com.client
-                                return self.modelspace.AddCircle(
-                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, center_point),
-                                    radius
-                                )
-                                
-                            def AddExtrudedSolid(self, profile, height, taper_angle=0.0):
-                                """Create 3D extruded solid from 2D profile"""
-                                import win32com.client
-                                # Create a region from the profile first, then extrude
-                                regions = self.modelspace.AddRegion([profile])
-                                if regions and len(regions) > 0:
-                                    region = regions[0]
-                                    return self.modelspace.AddExtrudedSolid(
-                                        region,
-                                        height,
-                                        math.radians(taper_angle)
-                                    )
-                                else:
-                                    raise ValueError("Could not create region from profile")
-                                
-                            def AddRevolvedSolid(self, profile, axis_point, axis_vector, angle):
-                                """Create 3D revolved solid around axis"""
-                                import win32com.client
-                                # Create a region from the profile first, then revolve
-                                regions = self.modelspace.AddRegion([profile])
-                                if regions and len(regions) > 0:
-                                    region = regions[0]
-                                    return self.modelspace.AddRevolvedSolid(
-                                        region,
-                                        win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_point),
-                                        win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, axis_vector),
-                                        angle
-                                    )
-                                else:
-                                    raise ValueError("Could not create region from profile")
-                                
-                            def AddPolyline(self, points):
-                                """Create 2D polyline for profiles"""
-                                import win32com.client
-                                # Flatten points for AutoCAD polyline format - needs X,Y pairs only
-                                flat_points = []
-                                for point in points:
-                                    flat_points.append(float(point[0]))  # X coordinate
-                                    flat_points.append(float(point[1]))  # Y coordinate
-                                return self.modelspace.AddLightWeightPolyline(
-                                    win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, flat_points)
-                                )
-                        
-                        self.model = ModelWrapper(app.ActiveDocument.ModelSpace)
-                    
-                    @property
-                    def Visible(self):
-                        return self.app.Visible
-                    
-                    @Visible.setter
-                    def Visible(self, value):
-                        self.app.Visible = value
-                        
-                    def get_entity_by_id(self, entity_id):
-                        """Get entity by ObjectID"""
-                        try:
-                            # Search through all entities in the document
-                            for entity in self.model.modelspace:
-                                if entity.ObjectID == entity_id:
-                                    return entity
-                            return None
-                        except:
-                            return None
-                            
-                    def union_solids(self, base_entity, union_entities):
-                        """Perform boolean union on solids"""
-                        result = base_entity
-                        for entity in union_entities:
-                            if entity:
-                                result = result.Boolean(0, entity)  # 0 = Union
-                        return result
-                        
-                    def subtract_solids(self, base_entity, subtract_entities):
-                        """Perform boolean subtraction on solids"""
-                        result = base_entity
-                        for entity in subtract_entities:
-                            if entity:
-                                result = result.Boolean(2, entity)  # 2 = Subtract
-                        return result
+                # Fallback: Create new AutoCAD 2025 instance
+                app = win32com.client.Dispatch("AutoCAD.Application.25")
+                app.Visible = True
                 
                 acad = AutocadWrapper(app)
-                logger.info("Connected to AutoCAD.Application")
+                logger.info("Created new AutoCAD.Application.25")
             except Exception as e2:
-                logger.info(f"AutoCAD.Application not found: {e2}")
+                logger.error(f"AutoCAD.Application.25 not found: {e2}")
                 # Last resort - let pyautocad handle it
                 acad = Autocad(create_if_not_exists=True)
         

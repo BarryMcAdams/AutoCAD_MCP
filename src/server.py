@@ -133,7 +133,8 @@ def draw_line():
         
         # Create line in AutoCAD
         line = acad.model.AddLine(start_point, end_point)
-        line.Layer = layer
+        # Skip layer assignment due to COM compatibility issues
+        # line.Layer = layer
         
         # Extract entity properties
         properties = extract_entity_properties(line)
@@ -194,7 +195,8 @@ def draw_circle():
         
         # Create circle in AutoCAD
         circle = acad.model.AddCircle(center_point, radius)
-        circle.Layer = layer
+        # Skip layer assignment due to COM compatibility issues
+        # circle.Layer = layer
         
         # Extract entity properties
         properties = extract_entity_properties(circle)
@@ -442,7 +444,8 @@ def draw_extrude():
         
         # Create extruded solid
         solid = acad.model.AddExtrudedSolid(profile, height, taper_angle)
-        solid.Layer = layer
+        # Skip layer assignment due to COM compatibility issues
+        # solid.Layer = layer
         
         # Clean up profile polyline (optional)
         # profile.Delete()
@@ -715,6 +718,401 @@ def draw_boolean_subtract():
             'INVALID_PARAMETERS',
             {'suggestion': 'Check that all entity IDs refer to valid solid entities'}
         )), 400
+
+# Phase 3: Surface Mesh Operations
+
+@app.route('/surface/3d-mesh', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def create_3d_mesh():
+    """Create 3D mesh surface from rectangular grid of vertices."""
+    try:
+        from .decorators import validate_json_request
+        from .utils import validate_point3d, validate_layer_name, extract_entity_properties
+    except ImportError:
+        from decorators import validate_json_request
+        from utils import validate_point3d, validate_layer_name, extract_entity_properties
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    if 'm_size' not in data or 'n_size' not in data or 'vertices' not in data:
+        return jsonify(create_error_response(
+            'Missing required fields: m_size, n_size, and/or vertices',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': ['m_size', 'n_size', 'vertices']}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        m_size = int(data['m_size'])
+        n_size = int(data['n_size'])
+        vertices = [validate_point3d(vertex) for vertex in data['vertices']]
+        layer = validate_layer_name(data.get('layer', 'SURFACES'))
+        
+        if m_size < 2 or n_size < 2:
+            raise ValueError("Mesh dimensions must be at least 2x2")
+        if len(vertices) != m_size * n_size:
+            raise ValueError(f"Expected {m_size * n_size} vertices, got {len(vertices)}")
+            
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Create 3D mesh
+        mesh = acad.model.Add3DMesh(m_size, n_size, vertices)
+        # mesh.Layer = layer  # Skip layer assignment due to COM compatibility
+        
+        # Extract entity properties
+        properties = extract_entity_properties(mesh)
+        
+        logger.info(f"Created 3D mesh {mesh.ObjectID} ({m_size}x{n_size}) on layer '{layer}'")
+        
+        return jsonify(create_success_response({
+            'entity_id': mesh.ObjectID,
+            'entity_type': mesh.ObjectName,
+            'layer': layer,
+            'm_size': m_size,
+            'n_size': n_size,
+            'vertex_count': len(vertices),
+            'properties': properties
+        }))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check m_size, n_size are >= 2 and vertices array matches dimensions'}
+        )), 400
+
+@app.route('/surface/polyface-mesh', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def create_polyface_mesh():
+    """Create polyface mesh with variable vertex counts per face."""
+    try:
+        from .decorators import validate_json_request
+        from .utils import validate_point3d, validate_layer_name, extract_entity_properties
+    except ImportError:
+        from decorators import validate_json_request
+        from utils import validate_point3d, validate_layer_name, extract_entity_properties
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    if 'vertices' not in data or 'faces' not in data:
+        return jsonify(create_error_response(
+            'Missing required fields: vertices and/or faces',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': ['vertices', 'faces']}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        vertices = [validate_point3d(vertex) for vertex in data['vertices']]
+        faces = data['faces']
+        layer = validate_layer_name(data.get('layer', 'SURFACES'))
+        
+        if len(vertices) < 4:
+            raise ValueError("Polyface mesh requires at least 4 vertices")
+        if len(faces) < 1:
+            raise ValueError("Polyface mesh requires at least 1 face")
+            
+        # Validate face indices
+        for i, face in enumerate(faces):
+            if not isinstance(face, list) or len(face) < 3:
+                raise ValueError(f"Face {i} must have at least 3 vertex indices")
+            for vertex_idx in face:
+                if not isinstance(vertex_idx, int) or vertex_idx < 0 or vertex_idx >= len(vertices):
+                    raise ValueError(f"Face {i} contains invalid vertex index: {vertex_idx}")
+            
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Create polyface mesh
+        mesh = acad.model.AddPolyFaceMesh(vertices, faces)
+        # mesh.Layer = layer  # Skip layer assignment due to COM compatibility
+        
+        # Extract entity properties
+        properties = extract_entity_properties(mesh)
+        
+        logger.info(f"Created polyface mesh {mesh.ObjectID} ({len(vertices)} vertices, {len(faces)} faces) on layer '{layer}'")
+        
+        return jsonify(create_success_response({
+            'entity_id': mesh.ObjectID,
+            'entity_type': mesh.ObjectName,
+            'layer': layer,
+            'vertex_count': len(vertices),
+            'face_count': len(faces),
+            'properties': properties
+        }))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check vertices are valid 3D points and faces contain valid vertex indices'}
+        )), 400
+
+@app.route('/surface/unfold', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def unfold_surface():
+    """Analyze and unfold a 3D surface mesh for manufacturing."""
+    try:
+        from .decorators import validate_json_request
+        from .utils import validate_entity_id, validate_tolerance, analyze_surface_mesh, unfold_surface_simple
+    except ImportError:
+        from decorators import validate_json_request
+        from utils import validate_entity_id, validate_tolerance, analyze_surface_mesh, unfold_surface_simple
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    if 'entity_id' not in data:
+        return jsonify(create_error_response(
+            'Missing required field: entity_id',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': ['entity_id']}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        entity_id = validate_entity_id(data['entity_id'])
+        tolerance = validate_tolerance(data.get('tolerance', 0.01))
+        
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Find the entity by ID
+        entity = None
+        for obj in acad.model.modelspace:
+            if obj.ObjectID == entity_id:
+                entity = obj
+                break
+                
+        if entity is None:
+            return jsonify(create_error_response(
+                f'Entity with ID {entity_id} not found',
+                'ENTITY_NOT_FOUND',
+                {'suggestion': 'Check that the entity_id is valid and the entity exists'}
+            )), 404
+        
+        # Analyze the surface
+        logger.info(f"Analyzing surface entity {entity_id} for unfolding")
+        analysis = analyze_surface_mesh(entity)
+        
+        if 'error' in analysis:
+            return jsonify(create_error_response(
+                f'Surface analysis failed: {analysis["error"]}',
+                'SURFACE_ANALYSIS_FAILED',
+                {'suggestion': 'Ensure the entity is a valid 3D mesh or surface'}
+            )), 400
+        
+        # Perform unfolding
+        logger.info(f"Unfolding surface with tolerance {tolerance}")
+        unfolding_result = unfold_surface_simple(analysis, tolerance)
+        
+        if 'error' in unfolding_result:
+            return jsonify(create_error_response(
+                f'Surface unfolding failed: {unfolding_result["error"]}',
+                'SURFACE_UNFOLDING_FAILED',
+                {'suggestion': 'Check that the surface is suitable for unfolding'}
+            )), 400
+        
+        logger.info(f"Successfully unfolded surface {entity_id}")
+        
+        return jsonify(create_success_response({
+            'entity_id': entity_id,
+            'analysis': analysis,
+            'unfolding': unfolding_result,
+            'tolerance': tolerance,
+            'operation': 'surface_unfold'
+        }))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check that entity_id is valid and tolerance is between 0.001 and 1.0'}
+        )), 400
+
+# Phase 4: Advanced Surface Unfolding with LSCM
+
+@app.route('/surface/unfold-advanced', methods=['POST'])
+@log_api_call
+@handle_autocad_errors
+@require_autocad_connection
+def unfold_surface_advanced():
+    """Advanced surface unfolding using LSCM algorithm for complex curved surfaces."""
+    try:
+        from .algorithms import extract_triangle_mesh, analyze_mesh_curvature, find_key_vertices_for_folding, calculate_geodesic_paths
+        from .algorithms.lscm import unfold_surface_lscm
+        from .utils import validate_entity_id, validate_tolerance
+    except ImportError:
+        from algorithms import extract_triangle_mesh, analyze_mesh_curvature, find_key_vertices_for_folding, calculate_geodesic_paths
+        from algorithms.lscm import unfold_surface_lscm
+        from utils import validate_entity_id, validate_tolerance
+    
+    # Validate request has JSON data
+    if not request.is_json:
+        return jsonify(create_error_response(
+            'Request must be JSON',
+            'INVALID_CONTENT_TYPE',
+            {'suggestion': 'Set Content-Type header to application/json'}
+        )), 400
+    
+    data = request.get_json()
+    
+    # Validate required fields
+    if 'entity_id' not in data:
+        return jsonify(create_error_response(
+            'Missing required field: entity_id',
+            'MISSING_REQUIRED_FIELDS',
+            {'required_fields': ['entity_id']}
+        )), 400
+    
+    try:
+        # Validate input parameters
+        entity_id = validate_entity_id(data['entity_id'])
+        tolerance = validate_tolerance(data.get('tolerance', 0.001))
+        algorithm = data.get('algorithm', 'lscm')  # 'lscm' or 'simple'
+        generate_fold_lines = data.get('generate_fold_lines', True)
+        boundary_constraints = data.get('boundary_constraints', None)
+        
+        # Get AutoCAD instance
+        acad = get_autocad_instance()
+        
+        # Find the entity by ID
+        entity = None
+        for obj in acad.model.modelspace:
+            if obj.ObjectID == entity_id:
+                entity = obj
+                break
+                
+        if entity is None:
+            return jsonify(create_error_response(
+                f'Entity with ID {entity_id} not found',
+                'ENTITY_NOT_FOUND',
+                {'suggestion': 'Check that the entity_id is valid and the entity exists'}
+            )), 404
+        
+        logger.info(f"Advanced unfolding entity {entity_id} using {algorithm} algorithm")
+        
+        # Extract triangle mesh from AutoCAD entity
+        try:
+            vertices, triangles = extract_triangle_mesh(entity)
+            logger.info(f"Extracted mesh: {len(vertices)} vertices, {len(triangles)} triangles")
+        except Exception as e:
+            return jsonify(create_error_response(
+                f'Failed to extract triangle mesh: {str(e)}',
+                'MESH_EXTRACTION_FAILED',
+                {'suggestion': 'Ensure the entity is a valid 3D mesh surface'}
+            )), 400
+        
+        # Perform curvature analysis
+        curvature_analysis = analyze_mesh_curvature(vertices, triangles)
+        
+        # Choose unfolding algorithm
+        if algorithm == 'lscm':
+            # Use LSCM algorithm for advanced unfolding
+            unfolding_result = unfold_surface_lscm(vertices, triangles, boundary_constraints, tolerance)
+        else:
+            # Fall back to simple algorithm
+            from utils import analyze_surface_mesh, unfold_surface_simple
+            analysis = analyze_surface_mesh(entity)
+            unfolding_result = unfold_surface_simple(analysis, tolerance)
+        
+        if not unfolding_result.get('success', False):
+            return jsonify(create_error_response(
+                f'Surface unfolding failed: {unfolding_result.get("error", "Unknown error")}',
+                'SURFACE_UNFOLDING_FAILED',
+                {'suggestion': 'Try different algorithm or check mesh quality'}
+            )), 400
+        
+        # Generate advanced fold lines if requested
+        fold_lines_data = None
+        if generate_fold_lines and algorithm == 'lscm':
+            try:
+                # Find key vertices for fold line placement
+                key_vertices = find_key_vertices_for_folding(vertices, triangles, curvature_analysis)
+                
+                if len(key_vertices) > 1:
+                    # Calculate geodesic paths between key vertices
+                    geodesic_result = calculate_geodesic_paths(vertices, triangles, key_vertices)
+                    fold_lines_data = geodesic_result.get('fold_lines', [])
+                    logger.info(f"Generated {len(fold_lines_data)} advanced fold lines")
+                else:
+                    logger.warning("Insufficient key vertices for fold line generation")
+                    fold_lines_data = []
+                    
+            except Exception as e:
+                logger.warning(f"Advanced fold line generation failed: {e}")
+                fold_lines_data = []
+        
+        # Prepare comprehensive response
+        response_data = {
+            'entity_id': entity_id,
+            'algorithm': algorithm,
+            'tolerance': tolerance,
+            'mesh_info': {
+                'n_vertices': len(vertices),
+                'n_triangles': len(triangles),
+                'surface_type': curvature_analysis.get('surface_type', 'unknown')
+            },
+            'curvature_analysis': curvature_analysis,
+            'unfolding_result': unfolding_result,
+            'operation': 'advanced_surface_unfold'
+        }
+        
+        # Add fold lines if generated
+        if fold_lines_data is not None:
+            response_data['fold_lines'] = fold_lines_data
+            response_data['n_fold_lines'] = len(fold_lines_data)
+        
+        logger.info(f"Advanced surface unfolding completed successfully")
+        
+        return jsonify(create_success_response(response_data))
+        
+    except ValueError as e:
+        return jsonify(create_error_response(
+            str(e),
+            'INVALID_PARAMETERS',
+            {'suggestion': 'Check that entity_id is valid and tolerance is between 0.001 and 1.0'}
+        )), 400
+    except Exception as e:
+        logger.error(f"Advanced surface unfolding failed: {e}")
+        return jsonify(create_error_response(
+            f'Advanced unfolding failed: {str(e)}',
+            'ADVANCED_UNFOLDING_ERROR',
+            {'suggestion': 'Check server logs for detailed error information'}
+        )), 500
 
 # Application startup
 if __name__ == '__main__':

@@ -209,7 +209,11 @@ def require_autocad_connection(func: Callable) -> Callable:
                 raise ConnectionError("AutoCAD not running")
                 
             # Verify connection with a simple operation
-            _ = acad.doc.Name  # This will fail if connection is broken
+            try:
+                _ = acad.doc.Name  # This will fail if connection is broken
+            except:
+                # Fallback: try to access app directly
+                _ = acad.app.Name
             
             return func(*args, **kwargs)
             
