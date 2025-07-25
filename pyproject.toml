@@ -33,6 +33,7 @@ pypiwin32 = "^223"
 fastapi = "^0.116.1"
 uvicorn = {extras = ["standard"], version = "^0.35.0"}
 python-multipart = "^0.0.20"
+mcp = "^1.0.0"
 
 
 [tool.poetry.group.dev.dependencies]

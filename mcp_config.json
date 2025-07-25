@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "autocad-mcp": {
+      "command": "python",
+      "args": ["-m", "uv", "run", "src/mcp_server.py"],
+      "cwd": "C:/Users/barrya/source/repos/AutoCAD_MCP",
+      "env": {
+        "PYTHONPATH": "src"
+      }
+    }
+  }
+}

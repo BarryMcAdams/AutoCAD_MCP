@@ -3,7 +3,7 @@
 ### Document Version
 - **Version**: 2.0 (Updated for pyautocad, 3D emphasis, and specific utilities)
 - **Date**: July 22, 2025
-- **Author**: Grok (AI Assistant, based on user specifications)
+- **Author**: Barry Adams
 - **Purpose**: This Product Requirements Document (PRD) provides a complete specification for the AutoCAD MCP Server, ensuring no gaps for AI agents. It incorporates pyautocad for COM interactions, focuses on 3D workflows, and details utilities for unfolding 3D entities (mimicking SmartUnfold functionality) and layout auto-dimensioning.
 
 ## Overview
