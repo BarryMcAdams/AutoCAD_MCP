@@ -562,11 +562,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Issues**: [GitHub Issues](https://github.com/BarryMcAdams/AutoCAD_MCP/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/BarryMcAdams/AutoCAD_MCP/discussions)
 
-### Professional Support
-For enterprise deployment, custom development, or professional support:
-- Email: support@autocad-mcp.com
-- Enterprise: enterprise@autocad-mcp.com
-
 ---
 
 ## 🌟 Star History

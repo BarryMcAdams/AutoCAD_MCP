@@ -15,7 +15,7 @@ This document specifies how the AutoCAD MCP Server integrates with Visual Studio
 
 #### 1. VS Code Extensions
 - **Roo Code**: Primary AI coding assistant extension
-- **Claude Code**: Secondary AI assistant (if available)
+- **AI Assistant**: Secondary AI assistant (if available)
 - **Cline**: Command-line interface integration
 - **Python Extension**: For script development and debugging
 

@@ -13,7 +13,7 @@ This document outlines the complete development workflow for the AutoCAD MCP pro
 5. **VS Code 1.92+** with extensions:
    - Roo Code (roo-cline.roo-cline)
    - Python (ms-python.python)
-   - Optional: Claude Code, Cline
+   - Optional: AI coding assistants
 
 ### Initial Setup
 ```bash

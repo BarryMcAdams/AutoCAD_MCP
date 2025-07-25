@@ -150,7 +150,7 @@ File: `.vscode/settings.json` (project-specific)
     "rooCline.pythonPath": "C:/Users/barrya/AppData/Local/pypoetry/Cache/virtualenvs/autocad-mcp-lupfEvC3-py3.12/Scripts/python.exe",
     "rooCline.autoCompleteEnabled": true,
     "rooCline.contextWindow": 8000,
-    "rooCline.modelProvider": "anthropic",
+    "rooCline.modelProvider": "ai_provider",
     "rooCline.model": "claude-3-sonnet-20240229",
     "rooCline.customInstructions": "This is an AutoCAD automation project using MCP server. Always import McpClient from mcp_client. Prefer using MCP API calls over direct pyautocad calls for complex operations. Include error handling for server connection issues.",
     "python.defaultInterpreterPath": "C:/Users/barrya/AppData/Local/pypoetry/Cache/virtualenvs/autocad-mcp-lupfEvC3-py3.12/Scripts/python.exe"
