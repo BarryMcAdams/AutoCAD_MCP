@@ -4,7 +4,7 @@ name = "autocad-mcp"
 version = "0.1.0"
 description = "A Model Context Protocol (MCP) server for AutoCAD 2025"
 authors = [
-    {name = "AutoCAD MCP Team", email = "team@autocad-mcp.dev"}
+    {name = "AutoCAD MCP Contributors"}
 ]
 readme = "README.md"
 license = {text = "MIT"}

@@ -59,3 +59,22 @@ coverage.xml
 
 # Local settings
 .claude/settings.local.json
+
+# Project cleanup
+DELETED/
+*.tmp
+temp/
+scratch/
+
+# Development files
+debug_*.py
+test_*.py
+*_debug.py
+*_test.py
+run_test.bat
+quick_test.py
+
+# Session files
+Sessions/
+Claude_*.md
+CLAUDE_*.md
