@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-AutoCAD MCP Server is a production-ready manufacturing CAD automation platform that transforms AutoCAD 2025 into a comprehensive 3D surface unfolding, dimensioning, and material optimization system. It provides both a Flask REST API and MCP (Model Context Protocol) server for integration with various development environments.
+AutoCAD Master Coder is a comprehensive development platform that transforms AutoCAD 2025 into an advanced automation environment with expert-level Python, AutoLISP, and VBA capabilities. Built on a production-ready manufacturing foundation, it provides enhanced COM wrapper, interactive development tools, VS Code integration, and comprehensive code generation while maintaining 100% backward compatibility with existing manufacturing workflows.
 
 ## Development Commands
 
@@ -18,80 +18,157 @@ poetry shell
 
 ### Core Development Commands
 ```bash
-# Start Flask HTTP server
+# Start Flask HTTP server (Manufacturing system - PRESERVED)
 poetry run python src/server.py
 
-# Start MCP server (for VS Code/Roo Code integration)
+# Start Enhanced MCP server (Master Coder + Manufacturing)
+poetry run python src/mcp_integration/enhanced_mcp_server.py
+
+# Start Legacy MCP server (Original manufacturing only)
 poetry run python src/mcp_server.py
 
-# Run all tests
+# Run all tests including backward compatibility
 poetry run pytest
+
+# Run backward compatibility test suite
+poetry run python tests/test_backward_compatibility.py
 
 # Run tests with coverage
 poetry run pytest --cov=src
 
-# Format code
+# Master Coder Enhanced Development Commands
+# Format code (includes new modules)
 poetry run black .
 
-# Lint code
+# Lint code (comprehensive analysis)
 poetry run ruff check .
 
-# Format and lint together
-poetry run black . && poetry run ruff check .
+# Type checking (enhanced modules)
+poetry run mypy src/enhanced_autocad src/mcp_integration src/tools
+
+# Security analysis
+poetry run bandit -r src/enhanced_autocad src/mcp_integration src/tools
+
+# Complete code quality check
+poetry run black . && poetry run ruff check . && poetry run mypy src/enhanced_autocad src/mcp_integration src/tools
 ```
 
 ### Manual Testing
 ```bash
-# Test server health
+# Test manufacturing server health (PRESERVED)
 curl http://localhost:5001/health
 
-# Test AutoCAD connection status
+# Test AutoCAD connection status (PRESERVED)
 curl http://localhost:5001/acad-status
 
-# Test basic line drawing
+# Test basic line drawing (PRESERVED)
 curl -X POST http://localhost:5001/draw/line \
   -H "Content-Type: application/json" \
   -d '{"start_point": [0,0,0], "end_point": [100,100,0]}'
+
+# Master Coder Enhanced Testing
+# Test enhanced AutoCAD wrapper directly
+poetry run python -c "
+from src.enhanced_autocad.compatibility_layer import Autocad
+acad = Autocad()
+print('Enhanced AutoCAD Status:', acad.get_connection_status())
+"
+
+# Test migration analysis
+poetry run python src/tools/migrate_pyautocad.py . --dry-run
+
+# Test performance baseline (when AutoCAD available)
+poetry run python -c "
+from src.tools.performance_baseline import PerformanceBaseline
+baseline = PerformanceBaseline('.')
+print('Performance tools initialized successfully')
+"
 ```
 
 ## Architecture Overview
 
-### Dual Server Architecture
-- **Flask HTTP Server** (`src/server.py`): REST API on localhost:5001 with 25+ endpoints
-- **MCP Server** (`src/mcp_server.py`): Model Context Protocol for IDE/editor integration
-- **AutoCAD Integration**: COM interface via pyautocad for AutoCAD 2025 automation
+### Enhanced Multi-Server Architecture
+- **Flask HTTP Server** (`src/server.py`): Manufacturing REST API on localhost:5001 with 25+ endpoints (PRESERVED)
+- **Enhanced MCP Server** (`src/mcp_integration/enhanced_mcp_server.py`): Master Coder development + manufacturing tools
+- **Legacy MCP Server** (`src/mcp_server.py`): Original manufacturing-only MCP integration (PRESERVED)
+- **Enhanced AutoCAD Integration**: Enhanced COM wrapper with 100% pyautocad compatibility plus advanced features
 
 ### Core Components
 ```
 src/
-├── server.py              # Main Flask application (HTTP API)
-├── mcp_server.py          # MCP server for IDE integration
-├── utils.py               # AutoCAD COM utilities and validation
-├── dimensioning.py        # Automated dimensioning and manufacturing drawings
-├── pattern_optimization.py # Material nesting and optimization algorithms
-├── decorators.py          # Request handling and error management
-├── config.py             # Configuration management
-└── algorithms/           # Advanced mathematical algorithms
-    ├── lscm.py          # Least Squares Conformal Mapping
-    ├── geodesic.py      # Geodesic path calculations
-    └── mesh_utils.py    # Triangle mesh processing utilities
+├── server.py                    # Main Flask application (HTTP API) - PRESERVED
+├── mcp_server.py                # Legacy MCP server for IDE integration - PRESERVED
+├── utils.py                     # AutoCAD COM utilities and validation - PRESERVED
+├── dimensioning.py              # Automated dimensioning and manufacturing drawings - PRESERVED
+├── pattern_optimization.py      # Material nesting and optimization algorithms - PRESERVED
+├── decorators.py                # Request handling and error management - PRESERVED
+├── config.py                   # Configuration management - PRESERVED
+├── enhanced_autocad/           # Master Coder Enhanced AutoCAD wrapper (NEW)
+│   ├── enhanced_wrapper.py    # Main EnhancedAutoCAD class with 100% pyautocad compatibility
+│   ├── connection_manager.py  # Automatic connection recovery and health monitoring
+│   ├── performance_monitor.py # Comprehensive operation tracking and metrics
+│   ├── error_handler.py       # Intelligent error categorization and recovery
+│   └── compatibility_layer.py # Drop-in pyautocad replacement
+├── mcp_integration/           # Master Coder MCP integration layer (NEW)
+│   ├── enhanced_mcp_server.py # Extended MCP server with development + manufacturing tools
+│   ├── context_manager.py     # Session management for interactive development
+│   ├── security_manager.py    # Code execution security and sandboxing
+│   └── vscode_tools.py        # VS Code command palette and integration utilities
+├── tools/                     # Development and migration tools (NEW)
+│   ├── migrate_pyautocad.py   # Automated migration script with rollback capability
+│   └── performance_baseline.py # Performance testing and comparison framework
+└── algorithms/               # Advanced mathematical algorithms - PRESERVED
+    ├── lscm.py              # Least Squares Conformal Mapping
+    ├── geodesic.py          # Geodesic path calculations
+    └── mesh_utils.py        # Triangle mesh processing utilities
 ```
 
 ### Key Technical Features
+
+#### Manufacturing System (PRESERVED)
 - **Surface Unfolding**: LSCM algorithm with <0.1% distortion tolerance
 - **Automated Dimensioning**: Manufacturing-grade technical drawings
 - **Pattern Optimization**: 85-95% material utilization with nesting algorithms
 - **Batch Processing**: High-volume manufacturing workflows
 - **3D Operations**: Extrusion, revolution, boolean operations, mesh creation
 
+#### Master Coder Enhancements (NEW)
+- **Enhanced COM Wrapper**: 100% pyautocad compatibility with automatic connection recovery
+- **Performance Monitoring**: Real-time operation tracking, success rates, and metrics
+- **Intelligent Error Handling**: Error categorization with recovery suggestions
+- **Interactive Development**: Session-based Python code execution with VS Code integration
+- **Security Framework**: Sandboxed code execution with comprehensive validation
+- **Migration Tools**: Automated pyautocad to enhanced wrapper migration with rollback
+- **Quality Analysis**: Integrated linting, type checking, and security scanning
+
 ## AutoCAD Integration Patterns
 
 ### Connection Management
-Always use the centralized connection function:
+
+#### Enhanced AutoCAD Wrapper (RECOMMENDED)
+Use the enhanced wrapper for improved reliability and features:
+```python
+from enhanced_autocad.compatibility_layer import Autocad
+
+# Enhanced AutoCAD connection with automatic recovery
+acad = Autocad()
+# Includes: auto-retry, health monitoring, performance tracking, error handling
+
+# Get detailed connection status
+status = acad.get_connection_status()
+print(f"Connected: {status['connected']}, Version: {status.get('autocad_version', 'Unknown')}")
+
+# Performance and error metrics
+metrics = acad.get_performance_metrics()
+errors = acad.get_error_statistics()
+```
+
+#### Legacy Connection (PRESERVED)
+Original connection method still available:
 ```python
 from utils import get_autocad_instance
 
-# Proper AutoCAD connection
+# Original AutoCAD connection (PRESERVED for backward compatibility)
 acad = get_autocad_instance()
 # Connection includes auto-retry and error handling
 ```
