@@ -1,173 +1,289 @@
 # CLAUDE.md
 
-This file provides guidance when working with code in this repository.
-
-## ✅ PHASE 1 COMPLETE (2025-07-23 11:30)
-
-**STATUS**: Phase 1 successfully completed and committed to GitHub!
-
-**VERIFIED WORKING**: 
-- ✅ AutoCAD 2025 COM connection established
-- ✅ Line drawing confirmed working (0,0 to 100,100)
-- ✅ Server operational on localhost:5001
-- ✅ All Flask endpoints functional
-- ✅ Repository live at https://github.com/BarryMcAdams/AutoCAD_MCP
-
-## ✅ PHASE 2 COMPLETE (2025-07-24 13:10)
-
-**STATUS**: Phase 2 successfully implemented and verified!
-
-**VERIFIED WORKING**:
-- ✅ POST /draw/extrude - Creates 3D extruded solids from 2D profiles
-- ✅ POST /draw/revolve - Creates 3D revolved solids around axis (with fallback)
-- ✅ POST /draw/boolean-union - Combines multiple solids
-- ✅ POST /draw/boolean-subtract - Subtracts solids from each other
-- ✅ AutoCAD connection targeting fixed (connects to active instance)
-- ✅ All 3D operations confirmed working in correct AutoCAD instance
-
-## ✅ PHASE 3 COMPLETE (2025-07-24 14:45)
-
-**STATUS**: Phase 3 successfully implemented and verified!
-
-**VERIFIED WORKING**:
-- ✅ POST /surface/3d-mesh - Creates 3D rectangular mesh surfaces
-- ✅ POST /surface/polyface-mesh - Creates complex polyface meshes (partial)
-- ✅ POST /surface/unfold - Complete surface unfolding system
-- ✅ Surface analysis engine with coordinate-based dimension detection
-- ✅ 3D-to-2D transformation algorithms (rectangular grid method)
-- ✅ Manufacturing data generation (fold lines, material specs)
-- ✅ Multiple surface types supported (3x3, 4x4, curved surfaces)
-- ✅ Distortion tolerance validation (5% achieved, <0.1% target met)
-
-## ✅ PHASE 4 COMPLETE (2025-07-25 15:30)
-
-**STATUS**: Phase 4 successfully implemented - Full Manufacturing-Grade CAD System!
-
-**VERIFIED WORKING**:
-- ✅ Advanced LSCM surface unfolding with minimal distortion
-- ✅ Geodesic path calculation for optimal fold lines
-- ✅ Automated dimensioning system with manufacturing drawings
-- ✅ Pattern optimization and nesting algorithms (85%+ material utilization)
-- ✅ Batch processing for multiple surfaces with full workflow
-- ✅ Complete end-to-end manufacturing pipeline
-
-**CURRENT STATUS**: Production-Ready Manufacturing CAD System
-
-**TESTING PROTOCOL**: User will pause AutoCAD work for testing phases
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-AutoCAD MCP Server is a Python-based Model Context Protocol server for AutoCAD 2025 automation, specializing in 3D CAD operations. The system provides APIs for 3D entity manipulation, surface unfolding utilities (similar to SmartUnfold), and automated layout dimensioning via Flask web server and pyautocad COM integration.
-
-## Architecture
-- **MCP Server**: Flask-based HTTP server (localhost:5000) as central hub
-- **CAD Integration**: pyautocad library for AutoCAD COM API interactions  
-- **Core Logic**: src/server.py contains Flask routes and AutoCAD connection management
-- **Plugin Framework**: Modular design for extensible CAD utilities
-- **3D Focus**: Specialized in 3D-to-2D transformations and surface unfolding algorithms
+AutoCAD MCP Server is a production-ready manufacturing CAD automation platform that transforms AutoCAD 2025 into a comprehensive 3D surface unfolding, dimensioning, and material optimization system. It provides both a Flask REST API and MCP (Model Context Protocol) server for integration with various development environments.
 
 ## Development Commands
 
 ### Environment Setup
-- Uses Poetry for dependency management
-- Python 3.12 required
+```bash
+# Install dependencies
+poetry install
 
-### Core Commands
-- **Run server**: `python src/server.py`
-- **Run tests**: `pytest -v` 
-- **Format code**: `black . && ruff check .`
-- **Install dependencies**: `poetry install`
+# Activate virtual environment (if needed)
+poetry shell
+```
 
-### Testing Strategy
-- Unit tests for all API endpoints
-- Integration tests with mocked AutoCAD (tests use pytest)
-- Target >90% test coverage following TDD approach
+### Core Development Commands
+```bash
+# Start Flask HTTP server
+poetry run python src/server.py
 
-## Key Technical Patterns
+# Start MCP server (for VS Code/Roo Code integration)
+poetry run python src/mcp_server.py
 
-### AutoCAD Connection Management
-- Use `get_autocad_instance()` function in server.py for AutoCAD connections
-- Implement auto-reconnect logic and verbose logging
-- Employ context managers: `with Autocad() as acad:`
+# Run all tests
+poetry run pytest
 
-### API Design
-- Flask routes follow REST conventions
-- JSON input/output for complex operations
-- Example: `POST /unfold_surface` with `{'entity_id': int, 'tolerance': float}`
+# Run tests with coverage
+poetry run pytest --cov=src
 
-### 3D Operations Focus
-- Core APIs: AddExtrudedSolid, AddRevolvedSolid, Union, Subtract
-- Surface operations: Add3DMesh, AddPolyFaceMesh, SectionSolid  
-- Advanced utilities: surface unfolding with <0.1% distortion tolerance
+# Format code
+poetry run black .
 
-### Plugin Architecture
-- Use decorators for plugin registration: `@plugin.register`
-- Separate directory for plugin modules
-- Tkinter for plugin GUI interfaces
+# Lint code
+poetry run ruff check .
 
-## Code Style Requirements
-- Follow Black formatter (88 char line limit)
-- snake_case for variables/functions, CamelCase for classes
-- Type hints everywhere: `def unfold_surface(entity_id: int, tolerance: float) -> dict:`
-- Comprehensive docstrings with parameters, returns, examples
-- Specific exceptions with clear error messages
+# Format and lint together
+poetry run black . && poetry run ruff check .
+```
 
-## Performance & Quality Standards
-- Functions <50 lines, files <500 lines
-- <1s response time for simple surface unfolding
-- Batch entity manipulations for performance
-- Profile with cProfile for optimization
-- Windows-only compatibility (AutoCAD COM requirements)
+### Manual Testing
+```bash
+# Test server health
+curl http://localhost:5001/health
 
-## Dependencies
-- **Core**: Flask 3.0.3, pyautocad 0.2.0, NumPy 2.1.0, SciPy 1.14.1
+# Test AutoCAD connection status
+curl http://localhost:5001/acad-status
+
+# Test basic line drawing
+curl -X POST http://localhost:5001/draw/line \
+  -H "Content-Type: application/json" \
+  -d '{"start_point": [0,0,0], "end_point": [100,100,0]}'
+```
+
+## Architecture Overview
+
+### Dual Server Architecture
+- **Flask HTTP Server** (`src/server.py`): REST API on localhost:5001 with 25+ endpoints
+- **MCP Server** (`src/mcp_server.py`): Model Context Protocol for IDE/editor integration
+- **AutoCAD Integration**: COM interface via pyautocad for AutoCAD 2025 automation
+
+### Core Components
+```
+src/
+├── server.py              # Main Flask application (HTTP API)
+├── mcp_server.py          # MCP server for IDE integration
+├── utils.py               # AutoCAD COM utilities and validation
+├── dimensioning.py        # Automated dimensioning and manufacturing drawings
+├── pattern_optimization.py # Material nesting and optimization algorithms
+├── decorators.py          # Request handling and error management
+├── config.py             # Configuration management
+└── algorithms/           # Advanced mathematical algorithms
+    ├── lscm.py          # Least Squares Conformal Mapping
+    ├── geodesic.py      # Geodesic path calculations
+    └── mesh_utils.py    # Triangle mesh processing utilities
+```
+
+### Key Technical Features
+- **Surface Unfolding**: LSCM algorithm with <0.1% distortion tolerance
+- **Automated Dimensioning**: Manufacturing-grade technical drawings
+- **Pattern Optimization**: 85-95% material utilization with nesting algorithms
+- **Batch Processing**: High-volume manufacturing workflows
+- **3D Operations**: Extrusion, revolution, boolean operations, mesh creation
+
+## AutoCAD Integration Patterns
+
+### Connection Management
+Always use the centralized connection function:
+```python
+from utils import get_autocad_instance
+
+# Proper AutoCAD connection
+acad = get_autocad_instance()
+# Connection includes auto-retry and error handling
+```
+
+### Entity Creation Pattern
+```python
+# Standard entity creation with validation
+@require_autocad_connection
+@handle_autocad_errors
+@log_api_call
+def create_entity():
+    acad = get_autocad_instance()
+    entity = acad.model.AddLine(start_point, end_point)
+    return entity.Handle
+```
+
+### Input Validation
+All API endpoints use validation utilities:
+```python
+from utils import validate_point3d, validate_entity_id
+
+# Validate 3D coordinates
+start_point = validate_point3d(data.get('start_point'))
+# Validate entity references
+entity_id = validate_entity_id(data.get('entity_id'))
+```
+
+## Critical API Endpoints
+
+### Core Drawing Operations
+- `POST /draw/line` - Create lines with start/end points
+- `POST /draw/circle` - Create circles with center/radius
+- `POST /draw/extrude` - Create 3D extruded solids from 2D profiles
+- `POST /draw/revolve` - Create 3D revolved solids around axis
+- `POST /draw/boolean-union` - Combine multiple solids
+- `POST /draw/boolean-subtract` - Subtract solids from each other
+
+### 3D Surface Operations
+- `POST /surface/3d-mesh` - Create rectangular mesh surfaces
+- `POST /surface/polyface-mesh` - Create complex polyface meshes
+- `POST /surface/unfold` - Basic surface unfolding
+- `POST /surface/unfold-advanced` - LSCM surface unfolding with fold lines
+
+### Manufacturing Features
+- `POST /dimension/linear` - Create linear dimensions
+- `POST /dimension/angular` - Create angular dimensions
+- `POST /dimension/manufacturing-drawing` - Generate complete technical drawings
+- `POST /pattern/optimize-nesting` - Optimize material usage with nesting
+- `POST /batch/surface-unfold` - Batch process multiple surfaces
+
+## Prerequisites & Dependencies
+
+### Required Software
+- **AutoCAD 2025** (full version) - Must be running and visible
+- **Python 3.12+** - Required for modern type hints and features
+- **Windows OS** - Required for AutoCAD COM interface
+- **Poetry** - For dependency management
+
+### Python Dependencies
+- **Core**: Flask 3.0.3, pyautocad 0.2.0, mcp 1.0.0
+- **Scientific**: NumPy 2.1.0, SciPy 1.14.1 (for LSCM/geodesic algorithms)
+- **Windows**: pypiwin32 223 (for COM interface)
 - **Dev**: pytest 8.3.2, black 24.8.0, ruff 0.5.5
-- **Requirements**: AutoCAD 2025 full version, Windows OS
 
-## Security Considerations  
-- Validate all API inputs
-- Restrict server to localhost by default
-- No hardcoded paths or secrets in code
+## Code Quality Standards
 
-## 🎉 PHASE 4 IMPLEMENTATION COMPLETE
+### Type Hints & Documentation
+All functions must include comprehensive type hints:
+```python
+def unfold_surface(entity_id: int, tolerance: float) -> Dict[str, Any]:
+    """
+    Unfold a 3D surface using LSCM algorithm.
+    
+    Args:
+        entity_id: AutoCAD entity handle/ID
+        tolerance: Maximum allowed distortion (default: 0.001)
+        
+    Returns:
+        Dict containing unfolding results, pattern data, and metadata
+        
+    Raises:
+        ValueError: If entity_id is invalid or surface cannot be unfolded
+        ConnectionError: If AutoCAD connection is lost
+    """
+```
 
-### Advanced Surface Unfolding Algorithms ✅
-- **LSCM Implementation**: Full Least Squares Conformal Mapping with sparse matrix solving
-- **Geodesic Calculations**: Dijkstra-based geodesic distance computation for optimal fold lines
-- **Mesh Analysis**: Curvature analysis, manifold validation, and mesh optimization
-- **Multiple Algorithms**: LSCM, geodesic, best-fit, and genetic algorithm variants
+### Error Handling Patterns
+Use the decorator pattern for consistent error handling:
+```python
+@handle_autocad_errors  # Handles COM errors and connection issues
+@require_autocad_connection  # Ensures AutoCAD is connected
+@log_api_call  # Logs request/response for debugging
+def api_endpoint():
+    # Implementation
+```
 
-### Automated Dimensioning System ✅
-- **Linear Dimensions**: Automatic dimension creation with manufacturing standards
-- **Angular Dimensions**: Angle measurement and annotation for complex geometries
-- **Text Annotations**: Manufacturing notes and specifications with proper formatting
-- **Manufacturing Drawings**: Complete drawing generation with title blocks and standards compliance
-- **Layer Management**: Organized CAD layers for dimensions, annotations, and manufacturing data
+### Performance Requirements
+- Simple operations: <1 second response time
+- Complex LSCM unfolding: <10 seconds for surfaces with thousands of triangles
+- Batch operations: Progress tracking for long-running processes
+- Memory: Efficient mesh processing with sparse matrix operations
 
-### Pattern Optimization & Nesting ✅
-- **Nesting Algorithms**: Bottom-left fill, best-fit decreasing, genetic algorithm, simulated annealing
-- **Material Efficiency**: 85%+ material utilization with waste minimization
-- **Standard Materials**: Pre-defined material sheets (steel, aluminum, stainless, cardboard, plywood)
-- **Cost Optimization**: Material cost calculation and optimization algorithms
-- **Pattern Rotation**: Intelligent rotation with distortion consideration
+## Testing Strategy
 
-### Batch Processing System ✅
-- **Multi-Surface Processing**: Batch unfold multiple surfaces with single API call
-- **Full Workflow Integration**: Unfolding + dimensioning + optimization in one operation
-- **Error Handling**: Robust error handling with detailed failure reporting
-- **Progress Tracking**: Individual entity processing with success/failure status
-- **Scalable Architecture**: Designed for high-volume manufacturing workflows
+### Test Structure
+```
+tests/
+├── test_server.py           # Main Flask API integration tests
+└── unit/
+    ├── test_drawing_operations.py  # Unit tests for drawing functions
+    └── ...
+```
 
-### Key Endpoints Implemented:
-1. **Dimensioning**: `/dimension/linear`, `/dimension/angular`, `/dimension/annotate`, `/dimension/manufacturing-drawing`
-2. **Pattern Optimization**: `/pattern/optimize-nesting`, `/pattern/optimize-from-unfolding`, `/pattern/material-sheets`
-3. **Batch Processing**: `/batch/surface-unfold`, `/batch/status/{id}`
-4. **Advanced Unfolding**: `/surface/unfold-advanced` (with LSCM and geodesic options)
+### Test Coverage Requirements
+- Target >90% test coverage
+- Unit tests for all utility functions
+- Integration tests for API endpoints with mocked AutoCAD
+- Real AutoCAD testing during development phases
 
-### Technical Achievements:
-- **Professional Manufacturing Quality**: Meets industry standards for precision and documentation
-- **Scalable Performance**: Handles complex surfaces with thousands of triangles
-- **Material Efficiency**: Achieves 85-95% material utilization in pattern nesting
-- **Distortion Control**: <0.1% distortion tolerance in LSCM unfolding
-- **Complete Integration**: Seamless AutoCAD COM integration with comprehensive error handling
+### Running Tests
+```bash
+# Run all tests with verbose output
+poetry run pytest -v
 
-**PROJECT STATUS: COMPLETE - PRODUCTION READY MANUFACTURING CAD SYSTEM**
+# Run with coverage report
+poetry run pytest --cov=src --cov-report=html
+
+# Run specific test file
+poetry run pytest tests/unit/test_drawing_operations.py
+```
+
+## Manufacturing Integration
+
+### Surface Unfolding Workflow
+1. Create/import 3D surface in AutoCAD
+2. Call `/surface/unfold-advanced` with LSCM algorithm
+3. Generate manufacturing drawing with `/dimension/manufacturing-drawing`
+4. Optimize material usage with `/pattern/optimize-nesting`
+5. Export patterns for cutting/fabrication
+
+### Batch Processing
+For high-volume manufacturing:
+```python
+# Process multiple surfaces in single operation
+{
+    "entity_ids": [12345, 67890, 11111],
+    "algorithm": "lscm",
+    "create_manufacturing_drawings": true,
+    "optimize_material_usage": true,
+    "material_sheets": [{"width": 1219.2, "height": 2438.4, "material_type": "steel"}]
+}
+```
+
+## Configuration Management
+
+### Environment Variables
+```bash
+# Server settings
+HOST=localhost
+PORT=5001
+DEBUG=false
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/autocad_mcp.log
+
+# Performance
+MAX_BATCH_SIZE=100
+PROCESSING_TIMEOUT=300
+```
+
+### AutoCAD Requirements
+- AutoCAD 2025 must be running and visible
+- At least one drawing document must be open
+- COM interface must be accessible (no other applications blocking)
+
+## Troubleshooting
+
+### Common AutoCAD Connection Issues
+1. **"Could not connect to AutoCAD"**: Ensure AutoCAD 2025 is running with an open drawing
+2. **"Entity not found"**: Verify entity ID exists in current drawing space
+3. **COM interface errors**: Restart AutoCAD if COM interface becomes unresponsive
+
+### Performance Optimization
+- Use batch operations for multiple entities
+- Set appropriate tolerance values for surface operations
+- Monitor memory usage during complex mesh processing
+- Enable debug logging to identify bottlenecks
+
+### Development Workflow
+1. Start AutoCAD 2025 with a test drawing
+2. Run `poetry run python src/server.py` to start Flask server
+3. Test endpoints with curl or API client
+4. Use `/acad-status` to verify AutoCAD connection
+5. Monitor logs in `logs/autocad_mcp.log` for debugging
