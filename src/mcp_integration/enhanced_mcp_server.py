@@ -10,6 +10,7 @@ Maintains 100% backward compatibility while adding enhanced capabilities.
 import logging
 import asyncio
 import time
+import json
 from typing import Any, Dict, List, Optional
 from mcp.server import FastMCP
 from mcp import McpError
@@ -53,6 +54,14 @@ class EnhancedMCPServer:
         self.debugger = None
         self.error_diagnostics = None
         self.performance_analyzer = None
+        
+        # Initialize Phase 3 code generation components (lazy init)
+        self.autolisp_generator = None
+        self.python_generator = None
+        self.vba_generator = None
+        self.template_manager = None
+        self.language_coordinator = None
+        self.validation_engine = None
 
         # Register all MCP tools
         self._register_manufacturing_tools()
@@ -62,6 +71,7 @@ class EnhancedMCPServer:
         self._register_debugging_tools()
         self._register_diagnostics_tools()
         self._register_performance_tools()
+        self._register_code_generation_tools()
 
         logger.info("Enhanced MCP Server initialized with interactive capabilities")
 
@@ -119,6 +129,48 @@ class EnhancedMCPServer:
                 object_inspector=self.object_inspector
             )
         return self.performance_analyzer
+
+    def _get_autolisp_generator(self):
+        """Get AutoLISP generator instance with lazy initialization."""
+        if not self.autolisp_generator:
+            from ..code_generation.autolisp_generator import AutoLISPGenerator
+            self.autolisp_generator = AutoLISPGenerator()
+        return self.autolisp_generator
+
+    def _get_python_generator(self):
+        """Get Python generator instance with lazy initialization."""
+        if not self.python_generator:
+            from ..code_generation.python_generator import PythonGenerator
+            self.python_generator = PythonGenerator()
+        return self.python_generator
+
+    def _get_vba_generator(self):
+        """Get VBA generator instance with lazy initialization."""
+        if not self.vba_generator:
+            from ..code_generation.vba_generator import VBAGenerator
+            self.vba_generator = VBAGenerator()
+        return self.vba_generator
+
+    def _get_template_manager(self):
+        """Get template manager instance with lazy initialization."""
+        if not self.template_manager:
+            from ..code_generation.template_manager import TemplateManager
+            self.template_manager = TemplateManager()
+        return self.template_manager
+
+    def _get_language_coordinator(self):
+        """Get language coordinator instance with lazy initialization."""
+        if not self.language_coordinator:
+            from ..code_generation.language_coordinator import LanguageCoordinator
+            self.language_coordinator = LanguageCoordinator()
+        return self.language_coordinator
+
+    def _get_validation_engine(self):
+        """Get validation engine instance with lazy initialization."""
+        if not self.validation_engine:
+            from ..code_generation.validation_engine import ValidationEngine
+            self.validation_engine = ValidationEngine()
+        return self.validation_engine
 
     def _register_manufacturing_tools(self):
         """Register existing manufacturing MCP tools (preserved functionality)."""
@@ -1558,6 +1610,249 @@ Type your Python code and press Enter to execute."""
             except Exception as e:
                 logger.error(f"Error generating optimization report: {e}")
                 raise McpError("INTERNAL_ERROR", f"Failed to generate optimization report: {str(e)}")
+
+    def _register_code_generation_tools(self):
+        """Register Phase 3 code generation MCP tools."""
+
+        @self.mcp.tool()
+        def generate_autolisp_script(task_description: str, complexity: str = "basic") -> str:
+            """
+            Generate AutoLISP code from natural language description.
+            
+            Args:
+                task_description: Natural language description of the task
+                complexity: Code complexity level ('basic', 'intermediate', 'advanced')
+            
+            Returns:
+                Generated AutoLISP code with usage instructions
+            """
+            try:
+                generator = self._get_autolisp_generator()
+                result = generator.generate_code(task_description, complexity)
+                
+                if "error" in result:
+                    raise McpError("INVALID_PARAMS", result["error"])
+                
+                # Format response with code and instructions
+                response = {
+                    "code": result["code"],
+                    "language": result["language"],
+                    "command_name": result.get("command_name", ""),
+                    "description": result["description"],
+                    "usage_example": result.get("usage_example", ""),
+                    "notes": result.get("notes", [])
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error generating AutoLISP script: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to generate AutoLISP script: {str(e)}")
+
+        @self.mcp.tool()
+        def generate_python_autocad_script(task_description: str, complexity: str = "basic", template_type: str = None) -> str:
+            """
+            Generate Python AutoCAD script with best practices.
+            
+            Args:
+                task_description: Natural language description of the task
+                complexity: Code complexity level ('basic', 'intermediate', 'advanced')
+                template_type: Specific template type ('basic_drawing', 'data_processing', 'batch_processing', 'advanced_automation')
+            
+            Returns:
+                Generated Python code with usage instructions
+            """
+            try:
+                generator = self._get_python_generator()
+                result = generator.generate_code(task_description, complexity, template_type)
+                
+                if "error" in result:
+                    raise McpError("INVALID_PARAMS", result["error"])
+                
+                # Format response with code and metadata
+                response = {
+                    "code": result["code"],
+                    "language": result["language"],
+                    "template_type": result.get("template_type", "custom"),
+                    "description": result["description"],
+                    "usage_example": result.get("usage_example", ""),
+                    "complexity": result.get("complexity", complexity),
+                    "requirements": result.get("requirements", []),
+                    "notes": result.get("notes", [])
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error generating Python script: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to generate Python script: {str(e)}")
+
+        @self.mcp.tool()
+        def generate_vba_macro(task_description: str, complexity: str = "basic", target_host: str = "autocad") -> str:
+            """
+            Generate VBA macro code for AutoCAD or Excel integration.
+            
+            Args:
+                task_description: Natural language description of the task
+                complexity: Code complexity level ('basic', 'intermediate', 'advanced')
+                target_host: Target application ('autocad', 'excel')
+            
+            Returns:
+                Generated VBA code with usage instructions
+            """
+            try:
+                generator = self._get_vba_generator()
+                result = generator.generate_code(task_description, complexity, target_host)
+                
+                if "error" in result:
+                    raise McpError("INVALID_PARAMS", result["error"])
+                
+                # Format response with code and metadata
+                response = {
+                    "code": result["code"],
+                    "language": result["language"],
+                    "macro_name": result.get("macro_name", ""),
+                    "module_type": result.get("module_type", "standard"),
+                    "description": result["description"],
+                    "target_host": result.get("target_host", target_host),
+                    "dependencies": result.get("dependencies", []),
+                    "usage_instructions": result.get("usage_instructions", [])
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error generating VBA macro: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to generate VBA macro: {str(e)}")
+
+        @self.mcp.tool()
+        def suggest_optimal_language(task_description: str) -> str:
+            """
+            Recommend the best programming language for a specific AutoCAD automation task.
+            
+            Args:
+                task_description: Natural language description of the task
+            
+            Returns:
+                Language recommendation with reasoning and analysis
+            """
+            try:
+                coordinator = self._get_language_coordinator()
+                result = coordinator.suggest_optimal_approach(task_description)
+                
+                # Format comprehensive response
+                response = {
+                    "task_analysis": result["task_analysis"],
+                    "language_recommendations": result["language_recommendations"],
+                    "hybrid_solution": result["hybrid_solution"],
+                    "final_recommendation": result["final_recommendation"],
+                    "reasoning": "Analysis based on task complexity, integration needs, and performance requirements"
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error suggesting optimal language: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to suggest optimal language: {str(e)}")
+
+        @self.mcp.tool()
+        def create_hybrid_solution(requirements: Dict[str, Any]) -> str:
+            """
+            Create a hybrid solution using multiple programming languages optimally.
+            
+            Args:
+                requirements: Dictionary with task requirements including description, operations, integration_needs
+            
+            Returns:
+                Hybrid solution plan with implementation strategy
+            """
+            try:
+                coordinator = self._get_language_coordinator()
+                
+                # Parse requirements if passed as string
+                if isinstance(requirements, str):
+                    # Try to parse as JSON or treat as description
+                    try:
+                        import json
+                        requirements = json.loads(requirements)
+                    except:
+                        requirements = {"description": requirements}
+                
+                # Use the requirements to get hybrid solution
+                task_req = coordinator.parse_requirements(requirements.get("description", ""))
+                
+                # Update task requirements with provided details
+                if "operations" in requirements:
+                    task_req.operations.extend(requirements["operations"])
+                if "integration_needs" in requirements:
+                    task_req.integration_needs.extend(requirements["integration_needs"])
+                if "performance_critical" in requirements:
+                    task_req.performance_critical = requirements["performance_critical"]
+                
+                hybrid_result = coordinator.create_hybrid_solution(task_req)
+                
+                # Format response
+                response = {
+                    "hybrid_recommended": hybrid_result["hybrid_recommended"],
+                    "primary_language": hybrid_result.get("primary_language", ""),
+                    "secondary_language": hybrid_result.get("secondary_language", ""),
+                    "workflow_description": hybrid_result.get("workflow_description", ""),
+                    "implementation_approach": hybrid_result.get("implementation_approach", ""),
+                    "reason": hybrid_result.get("reason", ""),
+                    "task_analysis": {
+                        "complexity": task_req.complexity,
+                        "operations": task_req.operations,
+                        "integration_needs": task_req.integration_needs,
+                        "performance_critical": task_req.performance_critical
+                    }
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error creating hybrid solution: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to create hybrid solution: {str(e)}")
+
+        @self.mcp.tool()
+        def validate_generated_code(code: str, language: str) -> str:
+            """
+            Validate generated code for syntax, best practices, and AutoCAD compatibility.
+            
+            Args:
+                code: Code to validate
+                language: Programming language ('python', 'autolisp', 'vba')
+            
+            Returns:
+                Validation results with issues, suggestions, and quality score
+            """
+            try:
+                validator = self._get_validation_engine()
+                result = validator.validate_code(code, language)
+                
+                # Format validation response
+                response = {
+                    "valid": result.valid,
+                    "language": result.language,
+                    "quality_score": result.quality_score,
+                    "summary": result.summary,
+                    "issues": [
+                        {
+                            "severity": issue.severity,
+                            "category": issue.category,
+                            "message": issue.message,
+                            "line_number": issue.line_number,
+                            "suggestion": issue.suggestion
+                        }
+                        for issue in result.issues
+                    ],
+                    "suggestions": result.suggestions
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error validating code: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to validate code: {str(e)}")
 
     def get_mcp_server(self) -> FastMCP:
         """

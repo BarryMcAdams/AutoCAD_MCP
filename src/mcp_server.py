@@ -1,289 +1,321 @@
 """
-AutoCAD MCP Server - Model Context Protocol implementation
-Converts the Flask HTTP server to proper MCP server for VS Code/Roo Code integration
+AutoCAD MCP Server using FastMCP.
+
+This module provides a Model Context Protocol server for AutoCAD operations,
+integrating with the full AutoCAD functionality.
 """
 
-from mcp.server import FastMCP
-from mcp import McpError
-from mcp.types import Tool
-import asyncio
-import logging
-from typing import Any, Dict, List, Optional, Tuple
 import json
+import logging
+from typing import List, Optional
 
-# Import existing AutoCAD functionality
-from utils import get_autocad_instance
-# from decorators import handle_autocad_errors  # Not needed for MCP
+from mcp import McpError
+from mcp.server import FastMCP
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+from src.utils import get_autocad_instance, validate_point3d
+
 logger = logging.getLogger(__name__)
 
-# Create MCP server
+# Initialize MCP server
 mcp = FastMCP("AutoCAD MCP Server")
+
 
 @mcp.tool()
 def draw_line(start_point: List[float], end_point: List[float]) -> str:
     """
-    Draw a line in AutoCAD from start point to end point.
-    
+    Draw a line in AutoCAD between two 3D points.
+
     Args:
-        start_point: [x, y, z] coordinates for line start
-        end_point: [x, y, z] coordinates for line end
-    
+        start_point: Starting point [x, y, z]
+        end_point: Ending point [x, y, z]
+
     Returns:
-        Success message with entity information
+        str: Success message with entity ID
     """
     try:
         acad = get_autocad_instance()
-        entity_id = acad.draw_line(start_point, end_point)
-        return f"Line created successfully with entity ID: {entity_id}"
+        start = validate_point3d(start_point)
+        end = validate_point3d(end_point)
+
+        line = acad.model.AddLine(start, end)
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Line created successfully",
+                "entity_id": line.ObjectID,
+                "start_point": start_point,
+                "end_point": end_point,
+            }
+        )
     except Exception as e:
         logger.error(f"Error drawing line: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to draw line: {str(e)}")
+        return json.dumps({"success": False, "error": str(e), "message": "Failed to draw line"})
+
 
 @mcp.tool()
 def draw_circle(center: List[float], radius: float) -> str:
     """
     Draw a circle in AutoCAD.
-    
+
     Args:
-        center: [x, y, z] coordinates for circle center
+        center: Center point [x, y, z]
         radius: Circle radius
-    
+
     Returns:
-        Success message with entity information
+        str: Success message with entity ID
     """
     try:
         acad = get_autocad_instance()
-        entity_id = acad.draw_circle(center, radius)
-        return f"Circle created successfully with entity ID: {entity_id}"
+        center_point = validate_point3d(center)
+
+        circle = acad.model.AddCircle(center_point, radius)
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Circle created successfully",
+                "entity_id": circle.ObjectID,
+                "center": center,
+                "radius": radius,
+            }
+        )
     except Exception as e:
         logger.error(f"Error drawing circle: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to draw circle: {str(e)}")
+        return json.dumps({"success": False, "error": str(e), "message": "Failed to draw circle"})
+
 
 @mcp.tool()
 def extrude_profile(profile_points: List[List[float]], extrude_height: float) -> str:
     """
-    Create 3D extruded solid from 2D profile.
-    
+    Create a 3D solid by extruding a 2D profile.
+
     Args:
-        profile_points: List of [x, y] coordinates defining the profile
-        extrude_height: Height to extrude the profile
-    
+        profile_points: List of 2D points defining the profile
+        extrude_height: Height to extrude
+
     Returns:
-        Success message with entity information
+        str: Success message with entity ID
     """
     try:
         acad = get_autocad_instance()
-        entity_id = acad.extrude_profile(profile_points, extrude_height)
-        return f"Extruded solid created successfully with entity ID: {entity_id}"
+
+        # Create polyline from profile points
+        polyline = acad.model.AddPolyline(profile_points)
+
+        # Create extruded solid
+        solid = acad.model.AddExtrudedSolid(polyline, extrude_height)
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Extruded solid created successfully",
+                "entity_id": solid.ObjectID,
+                "profile_points": profile_points,
+                "extrude_height": extrude_height,
+            }
+        )
     except Exception as e:
         logger.error(f"Error creating extrusion: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to create extrusion: {str(e)}")
+        return json.dumps(
+            {"success": False, "error": str(e), "message": "Failed to create extrusion"}
+        )
+
 
 @mcp.tool()
-def revolve_profile(profile_points: List[List[float]], axis_start: List[float], axis_end: List[float], angle: float = 360.0) -> str:
+def revolve_profile(
+    profile_points: List[List[float]], axis_start: List[float], axis_end: List[float], angle: float
+) -> str:
     """
-    Create 3D revolved solid from 2D profile around an axis.
-    
+    Create a 3D solid by revolving a 2D profile around an axis.
+
     Args:
-        profile_points: List of [x, y] coordinates defining the profile
-        axis_start: [x, y, z] coordinates for revolution axis start
-        axis_end: [x, y, z] coordinates for revolution axis end
-        angle: Revolution angle in degrees (default: 360)
-    
+        profile_points: List of 2D points defining the profile
+        axis_start: Start point of revolution axis
+        axis_end: End point of revolution axis
+        angle: Revolution angle in degrees
+
     Returns:
-        Success message with entity information
+        str: Success message with entity ID
     """
     try:
         acad = get_autocad_instance()
-        entity_id = acad.revolve_profile(profile_points, axis_start, axis_end, angle)
-        return f"Revolved solid created successfully with entity ID: {entity_id}"
+
+        # Create polyline from profile points
+        polyline = acad.model.AddPolyline(profile_points)
+
+        # Create revolved solid
+        axis_vector = [
+            axis_end[0] - axis_start[0],
+            axis_end[1] - axis_start[1],
+            axis_end[2] - axis_start[2],
+        ]
+        solid = acad.model.AddRevolvedSolid(polyline, axis_start, axis_vector, angle)
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Revolved solid created successfully",
+                "entity_id": solid.ObjectID,
+                "profile_points": profile_points,
+                "axis_start": axis_start,
+                "axis_end": axis_end,
+                "angle": angle,
+            }
+        )
     except Exception as e:
         logger.error(f"Error creating revolution: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to create revolution: {str(e)}")
+        return json.dumps(
+            {"success": False, "error": str(e), "message": "Failed to create revolution"}
+        )
+
 
 @mcp.tool()
-def boolean_union(entity_ids: List[int]) -> str:
-    """
-    Combine multiple solids into a single solid using boolean union.
-    
-    Args:
-        entity_ids: List of entity IDs to combine
-    
-    Returns:
-        Success message with resulting entity information
-    """
-    try:
-        acad = get_autocad_instance()
-        result_id = acad.boolean_union(entity_ids)
-        return f"Boolean union completed successfully. Result entity ID: {result_id}"
-    except Exception as e:
-        logger.error(f"Error performing boolean union: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to perform boolean union: {str(e)}")
-
-@mcp.tool()
-def boolean_subtract(target_id: int, subtract_ids: List[int]) -> str:
-    """
-    Subtract solids from a target solid using boolean subtraction.
-    
-    Args:
-        target_id: Entity ID of the target solid
-        subtract_ids: List of entity IDs to subtract from target
-    
-    Returns:
-        Success message with resulting entity information
-    """
-    try:
-        acad = get_autocad_instance()
-        result_id = acad.boolean_subtract(target_id, subtract_ids)
-        return f"Boolean subtraction completed successfully. Result entity ID: {result_id}"
-    except Exception as e:
-        logger.error(f"Error performing boolean subtraction: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to perform boolean subtraction: {str(e)}")
-
-@mcp.tool()
-def create_3d_mesh(m_size: int, n_size: int, coordinates: List[List[float]]) -> str:
-    """
-    Create a 3D rectangular mesh surface.
-    
-    Args:
-        m_size: Number of vertices in M direction
-        n_size: Number of vertices in N direction
-        coordinates: List of [x, y, z] coordinates for mesh vertices
-    
-    Returns:
-        Success message with entity information
-    """
-    try:
-        acad = get_autocad_instance()
-        entity_id = acad.create_3d_mesh(m_size, n_size, coordinates)
-        return f"3D mesh created successfully with entity ID: {entity_id}"
-    except Exception as e:
-        logger.error(f"Error creating 3D mesh: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to create 3D mesh: {str(e)}")
-
-@mcp.tool()
-def unfold_surface(entity_id: int, tolerance: float = 0.01, algorithm: str = "lscm") -> str:
-    """
-    Unfold a 3D surface into a 2D pattern with manufacturing data.
-    
-    Args:
-        entity_id: ID of the 3D surface to unfold
-        tolerance: Distortion tolerance (default: 0.01)
-        algorithm: Unfolding algorithm ("lscm", "geodesic", or "simple")
-    
-    Returns:
-        JSON string with unfolding results including pattern data and fold lines
-    """
-    try:
-        acad = get_autocad_instance()
-        result = acad.unfold_surface_advanced(entity_id, algorithm, tolerance, generate_fold_lines=True)
-        return json.dumps(result, indent=2)
-    except Exception as e:
-        logger.error(f"Error unfolding surface: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to unfold surface: {str(e)}")
-
-@mcp.tool()
-def add_linear_dimension(start_point: List[float], end_point: List[float], dimension_line_point: List[float]) -> str:
-    """
-    Add a linear dimension to the drawing.
-    
-    Args:
-        start_point: [x, y, z] coordinates for dimension start
-        end_point: [x, y, z] coordinates for dimension end
-        dimension_line_point: [x, y, z] coordinates for dimension line position
-    
-    Returns:
-        Success message with dimension information
-    """
-    try:
-        acad = get_autocad_instance()
-        dim_id = acad.add_linear_dimension(start_point, end_point, dimension_line_point)
-        return f"Linear dimension added successfully with ID: {dim_id}"
-    except Exception as e:
-        logger.error(f"Error adding linear dimension: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to add linear dimension: {str(e)}")
-
-@mcp.tool()
-def optimize_pattern_nesting(patterns: List[Dict], material_sheets: List[Dict], algorithm: str = "best_fit_decreasing") -> str:
-    """
-    Optimize pattern nesting for material efficiency.
-    
-    Args:
-        patterns: List of pattern dictionaries with dimensions
-        material_sheets: List of material sheet dictionaries  
-        algorithm: Nesting algorithm to use
-    
-    Returns:
-        JSON string with optimization results and material utilization
-    """
-    try:
-        acad = get_autocad_instance()
-        result = acad.optimize_pattern_nesting(patterns, material_sheets, algorithm)
-        return json.dumps(result, indent=2)
-    except Exception as e:
-        logger.error(f"Error optimizing pattern nesting: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to optimize pattern nesting: {str(e)}")
-
-@mcp.tool()
-def batch_surface_unfold(entity_ids: List[int], algorithm: str = "lscm", create_manufacturing_drawings: bool = True) -> str:
-    """
-    Batch process multiple surfaces for unfolding with full manufacturing workflow.
-    
-    Args:
-        entity_ids: List of surface entity IDs to process
-        algorithm: Unfolding algorithm to use
-        create_manufacturing_drawings: Whether to create manufacturing drawings
-    
-    Returns:
-        JSON string with batch processing results
-    """
-    try:
-        acad = get_autocad_instance()
-        result = acad.batch_surface_unfold(entity_ids, algorithm, create_manufacturing_drawings)
-        return json.dumps(result, indent=2)
-    except Exception as e:
-        logger.error(f"Error in batch surface unfolding: {e}")
-        raise McpError("INTERNAL_ERROR", f"Failed to batch unfold surfaces: {str(e)}")
-
-@mcp.resource("autocad://status")  
-def get_autocad_status() -> str:
-    """Get current AutoCAD connection status and drawing information."""
-    try:
-        acad = get_autocad_instance()
-        status = acad.get_status()
-        return json.dumps(status, indent=2)
-    except Exception as e:
-        return json.dumps({"status": "disconnected", "error": str(e)})
-
-@mcp.resource("autocad://entities")
 def list_entities() -> str:
-    """List all entities in the current AutoCAD drawing."""
+    """
+    List all entities in the current AutoCAD drawing.
+
+    Returns:
+        str: JSON string with entity information
+    """
     try:
         acad = get_autocad_instance()
-        entities = acad.list_entities()
-        return json.dumps(entities, indent=2)
+
+        entities = []
+        for entity in acad.model.modelspace:
+            entity_info = {"id": entity.ObjectID, "type": entity.ObjectName, "layer": entity.Layer}
+
+            # Add additional properties if available
+            if hasattr(entity, "Length"):
+                entity_info["length"] = entity.Length
+            if hasattr(entity, "Area"):
+                entity_info["area"] = entity.Area
+            if hasattr(entity, "Volume"):
+                entity_info["volume"] = entity.Volume
+
+            entities.append(entity_info)
+
+        return json.dumps({"success": True, "count": len(entities), "entities": entities})
+    except Exception as e:
+        logger.error(f"Error listing entities: {e}")
+        return json.dumps({"success": False, "error": str(e), "message": "Failed to list entities"})
+
+
+@mcp.tool()
+def get_entity_info(entity_id: int) -> str:
+    """
+    Get detailed information about a specific entity.
+
+    Args:
+        entity_id: Entity ID to query
+
+    Returns:
+        str: JSON string with entity details
+    """
+    try:
+        acad = get_autocad_instance()
+
+        # Get entity by iterating through modelspace
+        entity = None
+        for ent in acad.model.modelspace:
+            if ent.ObjectID == entity_id:
+                entity = ent
+                break
+
+        if not entity:
+            return json.dumps(
+                {
+                    "success": False,
+                    "error": "Entity not found",
+                    "message": f"No entity found with ID {entity_id}",
+                }
+            )
+
+        from src.utils import extract_entity_properties
+
+        properties = extract_entity_properties(entity)
+
+        return json.dumps({"success": True, "entity": properties})
+    except Exception as e:
+        logger.error(f"Error getting entity info: {e}")
+        return json.dumps(
+            {"success": False, "error": str(e), "message": "Failed to get entity info"}
+        )
+
+
+@mcp.tool()
+def server_status() -> str:
+    """
+    Get MCP server and AutoCAD connection status.
+
+    Returns:
+        str: JSON string with status information
+    """
+    try:
+        acad = get_autocad_instance()
+        doc_name = acad.ActiveDocument.Name
+
+        return json.dumps(
+            {
+                "success": True,
+                "mcp_server": "running",
+                "autocad_connected": True,
+                "active_document": doc_name,
+                "tools_available": 6,
+                "message": "MCP server is operational and connected to AutoCAD",
+            }
+        )
+    except Exception as e:
+        return json.dumps(
+            {"success": False, "error": str(e), "message": "Failed to get server status"}
+        )
+
+
+@mcp.resource("autocad://server-status")
+def get_server_status() -> str:
+    """Get current MCP server status."""
+    try:
+        return json.dumps(
+            {
+                "mcp_server": "running",
+                "tools_available": 6,
+                "resources_available": 1,
+                "message": "AutoCAD MCP server is operational",
+            }
+        )
     except Exception as e:
         return json.dumps({"error": str(e)})
 
-@mcp.prompt("manufacturing-workflow")
-def manufacturing_workflow_prompt(surface_description: str) -> str:
-    """Generate a complete manufacturing workflow for a described surface."""
-    return f"""
-    Create a complete manufacturing workflow for: {surface_description}
 
-    Please follow these steps:
-    1. Create the 3D surface using appropriate AutoCAD tools
-    2. Unfold the surface using LSCM algorithm with <0.1% distortion tolerance
-    3. Add manufacturing dimensions and annotations
-    4. Optimize material nesting for efficiency
-    5. Generate fold lines and manufacturing notes
-
-    Use the available AutoCAD MCP tools to execute each step and provide detailed results.
+@mcp.prompt("autocad-help")
+def autocad_help_prompt() -> str:
+    """Get help with AutoCAD MCP tools."""
+    return """
+    AutoCAD MCP Server Help
+    ======================
+    
+    Available tools:
+    1. draw_line - Draw a line between two 3D points
+    2. draw_circle - Draw a circle with center and radius
+    3. extrude_profile - Create 3D solid by extruding 2D profile
+    4. revolve_profile - Create 3D solid by revolving profile around axis
+    5. list_entities - List all entities in current drawing
+    6. get_entity_info - Get detailed info about specific entity
+    7. server_status - Check server and AutoCAD connection
+    
+    Usage examples:
+    - draw_line: start_point=[0,0,0], end_point=[10,10,0]
+    - draw_circle: center=[5,5,0], radius=2.5
+    - extrude_profile: profile_points=[[0,0],[10,0],[10,10],[0,10]], extrude_height=5
+    
+    Requirements:
+    - AutoCAD 2025 must be running
+    - A drawing document must be open
     """
 
+
 if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
     # Run the MCP server
+    print("Starting AutoCAD MCP Server...")
     mcp.run()
