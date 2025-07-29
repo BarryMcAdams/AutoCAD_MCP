@@ -10,12 +10,18 @@ Integrates with security manager and context manager for safe interactive develo
 import logging
 import time
 import threading
-import resource
 import psutil
 import os
 from typing import Dict, Any, List, Optional, Callable
 from dataclasses import dataclass
 from enum import Enum
+
+# Try to import resource module (Unix only)
+try:
+    import resource
+    RESOURCE_AVAILABLE = True
+except ImportError:
+    RESOURCE_AVAILABLE = False
 
 # Import security and monitoring components
 from ..mcp_integration.security_manager import SecurityManager, SecurityError

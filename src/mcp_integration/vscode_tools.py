@@ -481,7 +481,7 @@ def draw_rectangle(width=100, height=50):
 
 # Call the function
 # draw_rectangle()""",
-                    "config.json": "{\\n  \\"autocad_version\\": \\"2025\\",\\n  \\"default_layer\\": \\"0\\",\\n  \\"units\\": \\"millimeters\\"\\n}"
+                    "config.json": '{\n  "autocad_version": "2025",\n  "default_layer": "0",\n  "units": "millimeters"\n}'
                 }
             }
         }

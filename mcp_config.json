@@ -3,7 +3,7 @@
     "autocad-mcp": {
       "command": "uv",
       "args": ["run", "python", "src/mcp_server.py"],
-      "cwd": "C:/Users/AdamsLaptop/source/repos/AutoCAD_MCP",
+      "cwd": "C:/Users/barrya/source/repos/AutoCAD_MCP",
       "env": {
         "PYTHONPATH": "src"
       }

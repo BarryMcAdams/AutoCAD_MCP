@@ -19,8 +19,6 @@ from mcp.types import Tool
 from ..enhanced_autocad.compatibility_layer import Autocad
 from .context_manager import ContextManager
 from .security_manager import SecurityManager
-from ..interactive.python_repl import PythonREPL
-from ..interactive.execution_engine import ExecutionEngine
 from ..inspection.object_inspector import ObjectInspector, InspectionDepth
 from ..inspection.property_analyzer import PropertyAnalyzer
 from ..inspection.method_discoverer import MethodDiscoverer
@@ -41,28 +39,29 @@ class EnhancedMCPServer:
         self.security_manager = SecurityManager()
         self.autocad_wrapper = None
         
-        # Initialize interactive components
-        self.python_repl = PythonREPL(
-            autocad_wrapper=self.autocad_wrapper,
-            security_manager=self.security_manager,
-            context_manager=self.context_manager
-        )
-        self.execution_engine = ExecutionEngine(
-            security_manager=self.security_manager
-        )
+        # Initialize interactive components (lazy import to avoid circular dependency)
+        self.python_repl = None
+        self.execution_engine = None
 
         # Initialize inspection components
         self.object_inspector = ObjectInspector(self.autocad_wrapper)
         self.property_analyzer = PropertyAnalyzer()
         self.method_discoverer = MethodDiscoverer()
         self.intellisense_provider = IntelliSenseProvider(self.autocad_wrapper)
+        
+        # Initialize Week 5 advanced components (lazy init)
+        self.debugger = None
+        self.error_diagnostics = None
+        self.performance_analyzer = None
 
         # Register all MCP tools
         self._register_manufacturing_tools()
         self._register_development_tools()
         self._register_interactive_tools()
         self._register_inspection_tools()
-        self._register_diagnostic_tools()
+        self._register_debugging_tools()
+        self._register_diagnostics_tools()
+        self._register_performance_tools()
 
         logger.info("Enhanced MCP Server initialized with interactive capabilities")
 
@@ -71,6 +70,55 @@ class EnhancedMCPServer:
         if not self.autocad_wrapper:
             self.autocad_wrapper = Autocad()
         return self.autocad_wrapper
+
+    def _get_python_repl(self):
+        """Get Python REPL instance with lazy initialization."""
+        if not self.python_repl:
+            from ..interactive.python_repl import PythonREPL
+            self.python_repl = PythonREPL(
+                autocad_wrapper=self.autocad_wrapper,
+                security_manager=self.security_manager,
+                context_manager=self.context_manager
+            )
+        return self.python_repl
+
+    def _get_execution_engine(self):
+        """Get execution engine instance with lazy initialization."""
+        if not self.execution_engine:
+            from ..interactive.execution_engine import ExecutionEngine
+            self.execution_engine = ExecutionEngine(
+                security_manager=self.security_manager
+            )
+        return self.execution_engine
+
+    def _get_debugger(self):
+        """Get debugger instance with lazy initialization."""
+        if not self.debugger:
+            from ..interactive.debugger import AutoCADDebugger
+            self.debugger = AutoCADDebugger(
+                object_inspector=self.object_inspector,
+                error_handler=None  # Will be initialized if needed
+            )
+        return self.debugger
+
+    def _get_error_diagnostics(self):
+        """Get error diagnostics instance with lazy initialization."""
+        if not self.error_diagnostics:
+            from ..interactive.error_diagnostics import ErrorDiagnostics
+            self.error_diagnostics = ErrorDiagnostics(
+                object_inspector=self.object_inspector,
+                error_handler=None
+            )
+        return self.error_diagnostics
+
+    def _get_performance_analyzer(self):
+        """Get performance analyzer instance with lazy initialization."""
+        if not self.performance_analyzer:
+            from ..interactive.performance_analyzer import PerformanceAnalyzer
+            self.performance_analyzer = PerformanceAnalyzer(
+                object_inspector=self.object_inspector
+            )
+        return self.performance_analyzer
 
     def _register_manufacturing_tools(self):
         """Register existing manufacturing MCP tools (preserved functionality)."""
@@ -967,6 +1015,549 @@ Type your Python code and press Enter to execute."""
             except Exception as e:
                 logger.error(f"Error recovering connection: {e}")
                 raise McpError("INTERNAL_ERROR", f"Connection recovery failed: {str(e)}")
+
+    def _register_debugging_tools(self):
+        """Register debugging MCP tools for Week 5 features."""
+
+        @self.mcp.tool()
+        def start_debug_session(session_id: Optional[str] = None) -> str:
+            """
+            Start a new AutoCAD debugging session with object inspection.
+            
+            Args:
+                session_id: Optional session identifier
+                
+            Returns:
+                Debug session information
+            """
+            try:
+                debugger = self._get_debugger()
+                session_id = debugger.start_debug_session(session_id)
+                return f"✅ Debug session started: {session_id}"
+            except Exception as e:
+                logger.error(f"Error starting debug session: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to start debug session: {str(e)}")
+
+        @self.mcp.tool()
+        def stop_debug_session() -> str:
+            """
+            Stop the current debugging session and get summary.
+            
+            Returns:
+                Debug session summary
+            """
+            try:
+                summary = self._get_debugger().stop_debug_session()
+                if "message" in summary:
+                    return summary["message"]
+                
+                return f"✅ Debug session stopped. Total operations: {summary.get('total_trace_entries', 0)}, Breakpoints hit: {summary.get('breakpoints_hit', 0)}"
+            except Exception as e:
+                logger.error(f"Error stopping debug session: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to stop debug session: {str(e)}")
+
+        @self.mcp.tool()
+        def add_breakpoint(breakpoint_type: str, 
+                          filename: Optional[str] = None,
+                          line_number: Optional[int] = None,
+                          function_name: Optional[str] = None,
+                          variable_name: Optional[str] = None,
+                          condition: Optional[str] = None) -> str:
+            """
+            Add a debugging breakpoint.
+            
+            Args:
+                breakpoint_type: Type of breakpoint ('line', 'function', 'variable', 'object_access')
+                filename: Source filename for line breakpoints
+                line_number: Line number for line breakpoints
+                function_name: Function name for function breakpoints
+                variable_name: Variable name for variable breakpoints
+                condition: Optional condition for conditional breakpoints
+                
+            Returns:
+                Breakpoint ID and confirmation
+            """
+            try:
+                breakpoint_id = self._get_debugger().add_breakpoint(
+                    breakpoint_type=breakpoint_type,
+                    filename=filename,
+                    line_number=line_number,
+                    function_name=function_name,
+                    variable_name=variable_name,
+                    condition=condition
+                )
+                return f"✅ Breakpoint added: {breakpoint_id} ({breakpoint_type})"
+            except Exception as e:
+                logger.error(f"Error adding breakpoint: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to add breakpoint: {str(e)}")
+
+        @self.mcp.tool()
+        def inspect_debug_context(depth: str = "detailed") -> str:
+            """
+            Inspect current debugging context with detailed object analysis.
+            
+            Args:
+                depth: Inspection depth ('basic', 'detailed', 'comprehensive')
+                
+            Returns:
+                Comprehensive debugging context report
+            """
+            try:
+                context = self._get_debugger().inspect_current_context(depth)
+                
+                if "error" in context:
+                    return f"❌ {context['error']}"
+                
+                # Format context report
+                report_lines = [
+                    "=== Debug Context Inspection ===",
+                    f"Current Frame: {context['frame_info']['function_name']} at line {context['frame_info']['line_number']}",
+                    f"File: {context['frame_info']['filename']}",
+                    "",
+                    f"Call Stack Depth: {len(context['call_stack'])}",
+                    f"Local Variables: {len(context['local_variables'])}",
+                    f"AutoCAD Objects: {len(context['autocad_objects'])}",
+                    f"Variable Watches: {len(context['variable_watches'])}",
+                    ""
+                ]
+                
+                # Add local variables summary
+                if context['local_variables']:
+                    report_lines.append("=== Key Local Variables ===")
+                    for var_name, var_info in list(context['local_variables'].items())[:10]:
+                        report_lines.append(f"  {var_name}: {var_info['type']} = {var_info['value'][:50]}")
+                    report_lines.append("")
+                
+                # Add AutoCAD objects summary  
+                if context['autocad_objects']:
+                    report_lines.append("=== AutoCAD Objects ===")
+                    for obj_name, obj_info in list(context['autocad_objects'].items())[:5]:
+                        if isinstance(obj_info, dict) and 'object_info' in obj_info:
+                            report_lines.append(f"  {obj_name}: {obj_info['object_info'].get('type', 'Unknown')}")
+                        else:
+                            report_lines.append(f"  {obj_name}: AutoCAD Object")
+                    report_lines.append("")
+                
+                return "\n".join(report_lines)
+                
+            except Exception as e:
+                logger.error(f"Error inspecting debug context: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to inspect context: {str(e)}")
+
+        @self.mcp.tool()
+        def evaluate_debug_expression(expression: str) -> str:
+            """
+            Evaluate Python expression in current debug context.
+            
+            Args:
+                expression: Python expression to evaluate
+                
+            Returns:
+                Expression evaluation result
+            """
+            try:
+                result = self._get_debugger().evaluate_expression(expression)
+                
+                if result["success"]:
+                    output = f"✅ Expression: {expression}\n"
+                    output += f"Result: {result['value']} ({result['type']})\n"
+                    
+                    if "autocad_inspection" in result:
+                        output += "AutoCAD Object Analysis Available ✓"
+                    
+                    return output
+                else:
+                    return f"❌ Expression failed: {result['error']} ({result.get('error_type', 'Unknown')})"
+                    
+            except Exception as e:
+                logger.error(f"Error evaluating expression: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to evaluate expression: {str(e)}")
+
+    def _register_diagnostics_tools(self):
+        """Register error diagnostics MCP tools for Week 5 features."""
+
+        @self.mcp.tool()
+        def analyze_error(error_message: str, 
+                         code: Optional[str] = None,
+                         context: Optional[str] = None) -> str:
+            """
+            Perform comprehensive error analysis with diagnostic recommendations.
+            
+            Args:
+                error_message: Error message or exception details
+                code: Source code that caused the error (optional)
+                context: Additional context information (optional)
+                
+            Returns:
+                Detailed diagnostic analysis and recommendations
+            """
+            try:
+                # Create a mock exception for analysis
+                class MockException(Exception):
+                    pass
+                
+                mock_error = MockException(error_message)
+                
+                # Parse context if provided
+                context_dict = {}
+                if context:
+                    try:
+                        import json
+                        context_dict = json.loads(context)
+                    except:
+                        context_dict = {"raw_context": context}
+                
+                # Analyze the error
+                diagnostic = self._get_error_diagnostics().analyze_error(
+                    error=mock_error,
+                    context=context_dict,
+                    code=code
+                )
+                
+                # Format diagnostic report
+                report_lines = [
+                    f"=== Error Diagnostic Analysis ===",
+                    f"Severity: {diagnostic.severity.value.upper()}",
+                    f"Category: {diagnostic.category.value}",
+                    f"Title: {diagnostic.title}",
+                    f"Confidence: {diagnostic.confidence_score:.1%}",
+                    "",
+                    f"Description: {diagnostic.description}",
+                    ""
+                ]
+                
+                if diagnostic.resolution_steps:
+                    report_lines.append("=== Resolution Steps ===")
+                    for i, step in enumerate(diagnostic.resolution_steps, 1):
+                        report_lines.append(f"{i}. {step}")
+                    report_lines.append("")
+                
+                if diagnostic.code_suggestions:
+                    report_lines.append("=== Code Examples ===")
+                    for suggestion in diagnostic.code_suggestions[:2]:
+                        report_lines.append(suggestion)
+                        report_lines.append("")
+                
+                return "\n".join(report_lines)
+                
+            except Exception as e:
+                logger.error(f"Error analyzing error: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to analyze error: {str(e)}")
+
+        @self.mcp.tool()
+        def analyze_code_issues(code: str) -> str:
+            """
+            Analyze code for potential issues without execution.
+            
+            Args:
+                code: Python code to analyze for issues
+                
+            Returns:
+                List of potential issues and recommendations
+            """
+            try:
+                issues = self._get_error_diagnostics().analyze_code_issues(code)
+                
+                if not issues:
+                    return "✅ No issues detected in code analysis"
+                
+                report_lines = [
+                    f"=== Code Analysis Report ===",
+                    f"Issues Found: {len(issues)}",
+                    ""
+                ]
+                
+                for i, issue in enumerate(issues, 1):
+                    report_lines.append(f"Issue #{i}: {issue.title}")
+                    report_lines.append(f"  Severity: {issue.severity.value}")
+                    report_lines.append(f"  Category: {issue.category.value}")
+                    report_lines.append(f"  Description: {issue.description}")
+                    
+                    if issue.resolution_steps:
+                        report_lines.append("  Recommendations:")
+                        for step in issue.resolution_steps[:2]:
+                            report_lines.append(f"    • {step}")
+                    report_lines.append("")
+                
+                return "\n".join(report_lines)
+                
+            except Exception as e:
+                logger.error(f"Error analyzing code: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to analyze code: {str(e)}")
+
+        @self.mcp.tool()
+        def search_error_solutions(query: str, limit: int = 5) -> str:
+            """
+            Search for solutions based on error description or pattern.
+            
+            Args:
+                query: Search query for error or issue
+                limit: Maximum number of results to return
+                
+            Returns:
+                Relevant solutions and documentation
+            """
+            try:
+                solutions = self._get_error_diagnostics().search_solutions(query, limit)
+                
+                if not solutions:
+                    return f"No solutions found for query: '{query}'"
+                
+                report_lines = [
+                    f"=== Solutions for: '{query}' ===",
+                    f"Found {len(solutions)} relevant solutions:",
+                    ""
+                ]
+                
+                for i, solution in enumerate(solutions, 1):
+                    report_lines.append(f"{i}. {solution['title']} (Relevance: {solution['relevance_score']:.1%})")
+                    report_lines.append(f"   Category: {solution['category']}")
+                    report_lines.append(f"   {solution['description']}")
+                    
+                    if solution['resolution_steps']:
+                        report_lines.append("   Steps:")
+                        for step in solution['resolution_steps'][:3]:
+                            report_lines.append(f"     • {step}")
+                    
+                    if solution['code_examples']:
+                        report_lines.append("   Example:")
+                        report_lines.append(f"     {solution['code_examples'][0][:100]}...")
+                    
+                    report_lines.append("")
+                
+                return "\n".join(report_lines)
+                
+            except Exception as e:
+                logger.error(f"Error searching solutions: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to search solutions: {str(e)}")
+
+    def _register_performance_tools(self):
+        """Register performance analysis MCP tools for Week 5 features."""
+
+        @self.mcp.tool()
+        def start_performance_analysis(session_id: Optional[str] = None) -> str:
+            """
+            Start performance analysis session with real-time monitoring.
+            
+            Args:
+                session_id: Optional session identifier
+                
+            Returns:
+                Performance analysis session information
+            """
+            try:
+                session_id = self._get_performance_analyzer().start_analysis_session(session_id)
+                return f"✅ Performance analysis started: {session_id}"
+            except Exception as e:
+                logger.error(f"Error starting performance analysis: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to start performance analysis: {str(e)}")
+
+        @self.mcp.tool()
+        def stop_performance_analysis() -> str:
+            """
+            Stop performance analysis session and get summary.
+            
+            Returns:
+                Performance analysis summary
+            """
+            try:
+                summary = self._get_performance_analyzer().stop_analysis_session()
+                
+                if "message" in summary:
+                    return summary["message"]
+                
+                return f"✅ Performance analysis stopped. Operations: {summary.get('total_operations', 0)}, Score: {summary.get('performance_score', 0):.1f}/100"
+            except Exception as e:
+                logger.error(f"Error stopping performance analysis: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to stop performance analysis: {str(e)}")
+
+        @self.mcp.tool()
+        def analyze_performance_bottlenecks(top_n: int = 5) -> str:
+            """
+            Analyze performance bottlenecks and identify optimization opportunities.
+            
+            Args:
+                top_n: Number of top bottlenecks to analyze
+                
+            Returns:
+                Bottleneck analysis with optimization recommendations
+            """
+            try:
+                bottlenecks = self._get_performance_analyzer().analyze_bottlenecks(top_n)
+                
+                if not bottlenecks:
+                    return "✅ No performance bottlenecks detected"
+                
+                report_lines = [
+                    f"=== Performance Bottleneck Analysis ===",
+                    f"Top {len(bottlenecks)} Performance Issues:",
+                    ""
+                ]
+                
+                for i, bottleneck in enumerate(bottlenecks, 1):
+                    report_lines.append(f"{i}. {bottleneck.operation_name}")
+                    report_lines.append(f"   Impact: {bottleneck.percentage_of_total:.1f}% of total time")
+                    report_lines.append(f"   Calls: {bottleneck.call_count}")
+                    report_lines.append(f"   Avg Time: {bottleneck.average_time:.3f}s")
+                    report_lines.append(f"   Max Time: {bottleneck.max_time:.3f}s")
+                    
+                    if bottleneck.suggestions:
+                        report_lines.append("   Optimization Suggestions:")
+                        for suggestion in bottleneck.suggestions[:2]:
+                            report_lines.append(f"     • {suggestion}")
+                    
+                    report_lines.append("")
+                
+                return "\n".join(report_lines)
+                
+            except Exception as e:
+                logger.error(f"Error analyzing bottlenecks: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to analyze bottlenecks: {str(e)}")
+
+        @self.mcp.tool()
+        def get_real_time_performance() -> str:
+            """
+            Get current real-time performance metrics.
+            
+            Returns:
+                Current performance metrics and system status
+            """
+            try:
+                metrics = self._get_performance_analyzer().get_real_time_metrics()
+                
+                if "message" in metrics:
+                    return metrics["message"]
+                
+                report_lines = [
+                    f"=== Real-Time Performance Metrics ===",
+                    f"Session: {metrics.get('session_id', 'N/A')}",
+                    f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                    ""
+                ]
+                
+                # System metrics
+                system_metrics = metrics.get('system_metrics', {})
+                if system_metrics:
+                    report_lines.append("=== System Metrics ===")
+                    report_lines.append(f"CPU Usage: {system_metrics.get('cpu_percent', 0):.1f}%")
+                    report_lines.append(f"Memory Usage: {system_metrics.get('memory_percent', 0):.1f}%")
+                    report_lines.append(f"Active Threads: {system_metrics.get('active_threads', 0)}")
+                    report_lines.append("")
+                
+                # Operation metrics
+                operation_metrics = metrics.get('operation_metrics', {})
+                if operation_metrics:
+                    report_lines.append("=== Operation Metrics ===")
+                    for op_name, op_data in list(operation_metrics.items())[:5]:
+                        report_lines.append(f"{op_name}:")
+                        report_lines.append(f"  Calls: {op_data.get('call_count', 0)}")
+                        report_lines.append(f"  Avg Time: {op_data.get('average_time', 0):.3f}s")
+                        report_lines.append(f"  Recent: {op_data.get('recent_calls', 0)} calls/min")
+                    report_lines.append("")
+                
+                # Memory analysis
+                memory_metrics = metrics.get('memory_usage', {})
+                if memory_metrics:
+                    report_lines.append("=== Memory Analysis ===")
+                    process_mb = memory_metrics.get('process_memory', 0) / (1024*1024)
+                    report_lines.append(f"Process Memory: {process_mb:.1f} MB")
+                    report_lines.append(f"Memory %: {memory_metrics.get('process_percent', 0):.1f}%")
+                    report_lines.append("")
+                
+                # Alerts
+                active_alerts = metrics.get('active_alerts', 0)
+                if active_alerts:
+                    report_lines.append(f"⚠️ Active Performance Alerts: {active_alerts}")
+                else:
+                    report_lines.append("✅ No active performance alerts")
+                
+                return "\n".join(report_lines)
+                
+            except Exception as e:
+                logger.error(f"Error getting real-time performance: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to get performance metrics: {str(e)}")
+
+        @self.mcp.tool()
+        def get_optimization_report() -> str:
+            """
+            Generate comprehensive optimization report with actionable recommendations.
+            
+            Returns:
+                Detailed optimization report with recommendations
+            """
+            try:
+                report = self._get_performance_analyzer().get_optimization_report()
+                
+                report_lines = [
+                    f"=== Performance Optimization Report ===",
+                    f"Session: {report.get('session_id', 'N/A')}",
+                    f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                    "",
+                    f"Executive Summary: {report.get('executive_summary', 'No summary available')}",
+                    ""
+                ]
+                
+                # System health
+                health = report.get('system_health', 'unknown')
+                health_emoji = {
+                    'healthy': '✅',
+                    'warning': '⚠️',
+                    'degraded': '🔶',
+                    'critical': '🔴'
+                }.get(health, '❓')
+                report_lines.append(f"System Health: {health_emoji} {health.upper()}")
+                
+                # AutoCAD performance
+                autocad_perf = report.get('autocad_performance', 'unknown')
+                perf_emoji = {
+                    'fast': '🚀',
+                    'moderate': '⚡',
+                    'slow': '🐌',
+                    'no_data': '❓'
+                }.get(autocad_perf, '❓')
+                report_lines.append(f"AutoCAD Performance: {perf_emoji} {autocad_perf.upper()}")
+                report_lines.append("")
+                
+                # Top bottlenecks
+                top_bottlenecks = report.get('top_bottlenecks', [])
+                if top_bottlenecks:
+                    report_lines.append("=== Top Performance Issues ===")
+                    for bottleneck in top_bottlenecks[:3]:
+                        report_lines.append(f"• {bottleneck['operation']} - {bottleneck['impact']} impact")
+                        report_lines.append(f"  Avg: {bottleneck['average_time']}, Calls: {bottleneck['call_count']}")
+                        if bottleneck['suggestions']:
+                            report_lines.append(f"  Fix: {bottleneck['suggestions'][0]}")
+                        report_lines.append("")
+                
+                # Active alerts
+                active_alerts = report.get('active_alerts', [])
+                if active_alerts:
+                    report_lines.append("=== Active Alerts ===")
+                    for alert in active_alerts[:3]:
+                        severity_emoji = {
+                            'critical': '🔴',
+                            'warning': '⚠️',
+                            'info': 'ℹ️'
+                        }.get(alert['severity'], '❓')
+                        report_lines.append(f"{severity_emoji} {alert['title']}")
+                        report_lines.append(f"  {alert['description']}")
+                        if alert['recommendations']:
+                            report_lines.append(f"  Action: {alert['recommendations'][0]}")
+                        report_lines.append("")
+                
+                # Top recommendations
+                recommendations = report.get('recommendations', [])
+                if recommendations:
+                    report_lines.append("=== Top Recommendations ===")
+                    for i, rec in enumerate(recommendations[:5], 1):
+                        report_lines.append(f"{i}. {rec}")
+                    report_lines.append("")
+                
+                return "\n".join(report_lines)
+                
+            except Exception as e:
+                logger.error(f"Error generating optimization report: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to generate optimization report: {str(e)}")
 
     def get_mcp_server(self) -> FastMCP:
         """
