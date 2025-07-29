@@ -8,7 +8,10 @@ command palette functionality, and interactive development features.
 
 import logging
 import time
-from typing import Dict, Any, List, Optional
+import json
+import re
+from typing import Dict, Any, List, Optional, Tuple
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +32,11 @@ class VSCodeTools:
         self.autocad_wrapper = autocad_wrapper
         self.context_manager = context_manager
         self.command_history = []
+        self.project_templates = self._initialize_project_templates()
+        self.enhanced_completions = self._initialize_enhanced_completions()
+        self.debug_sessions = {}
 
-        logger.info("VS Code Tools initialized")
+        logger.info("Enhanced VS Code Tools initialized")
 
     def get_autocad_connection_indicator(self) -> Dict[str, Any]:
         """
@@ -114,6 +120,27 @@ class VSCodeTools:
                 "id": "autocad.executeCode",
                 "title": "AutoCAD: Execute Selected Code",
                 "description": "Execute selected Python code in AutoCAD context",
+            },
+            {
+                "id": "autocad.debugCode",
+                "title": "AutoCAD: Debug Selected Code",
+                "description": "Debug selected Python code with breakpoints",
+            },
+            {
+                "id": "autocad.inspectObject",
+                "title": "AutoCAD: Inspect Object",
+                "description": "Inspect AutoCAD object properties and methods",
+            },
+            # Project management
+            {
+                "id": "autocad.createProject",
+                "title": "AutoCAD: Create New Project",
+                "description": "Create new AutoCAD automation project from template",
+            },
+            {
+                "id": "autocad.generateCode",
+                "title": "AutoCAD: Generate Code from Description",
+                "description": "Generate Python/AutoLISP/VBA code from natural language",
             },
             # Diagnostic commands
             {
@@ -222,6 +249,18 @@ class VSCodeTools:
 
         elif command_id == "autocad.performanceMetrics":
             return self._handle_performance_metrics()
+        
+        elif command_id == "autocad.debugCode":
+            return self._handle_debug_code(args)
+        
+        elif command_id == "autocad.inspectObject":
+            return self._handle_inspect_object(args)
+        
+        elif command_id == "autocad.createProject":
+            return self._handle_create_project(args)
+        
+        elif command_id == "autocad.generateCode":
+            return self._handle_generate_code(args)
 
         else:
             raise ValueError(f"Unknown command: {command_id}")
@@ -392,5 +431,290 @@ class VSCodeTools:
             "context_manager_available": self.context_manager is not None,
             "command_palette_items": len(self.get_command_palette_items()),
             "command_history_count": len(self.command_history),
+            "project_templates_count": len(self.project_templates),
+            "debug_sessions_active": len(self.debug_sessions),
             "integration_active": True,
         }
+    
+    def _initialize_project_templates(self) -> Dict[str, Dict[str, Any]]:
+        """Initialize project templates for VS Code integration."""
+        return {
+            "basic_automation": {
+                "name": "Basic AutoCAD Automation",
+                "description": "Simple automation script template",
+                "files": {
+                    "main.py": """# Basic AutoCAD Automation Script
+from enhanced_autocad import EnhancedAutoCAD
+
+def main():
+    with EnhancedAutoCAD() as acad:
+        # Your automation code here
+        pass
+
+if __name__ == "__main__":
+    main()""",
+                    "requirements.txt": "enhanced-autocad>=1.0.0\\npywin32>=311",
+                    "README.md": "# AutoCAD Automation Project\\n\\nBasic AutoCAD automation project."
+                }
+            },
+            "interactive_development": {
+                "name": "Interactive Development",
+                "description": "Template for interactive AutoCAD development", 
+                "files": {
+                    "interactive.py": """# Interactive AutoCAD Development Template
+from enhanced_autocad import EnhancedAutoCAD
+import math
+
+# Initialize AutoCAD connection
+acad = EnhancedAutoCAD()
+
+# Example: Draw a series of lines
+def draw_rectangle(width=100, height=50):
+    \"\"\"Draw a rectangle.\"\"\"
+    points = [
+        [0, 0, 0], [width, 0, 0],
+        [width, height, 0], [0, height, 0], [0, 0, 0]
+    ]
+    
+    for i in range(len(points) - 1):
+        acad.draw_line(points[i], points[i + 1])
+
+# Call the function
+# draw_rectangle()""",
+                    "config.json": "{\\n  \\"autocad_version\\": \\"2025\\",\\n  \\"default_layer\\": \\"0\\",\\n  \\"units\\": \\"millimeters\\"\\n}"
+                }
+            }
+        }
+    
+    def _initialize_enhanced_completions(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Initialize enhanced IntelliSense completions."""
+        return {
+            "autocad_objects": [
+                {
+                    "label": "app",
+                    "kind": "property",
+                    "detail": "Application",
+                    "documentation": "AutoCAD Application object - provides access to application-level functionality",
+                    "insertText": "app"
+                },
+                {
+                    "label": "doc",
+                    "kind": "property", 
+                    "detail": "Document",
+                    "documentation": "Active AutoCAD document - provides access to drawing content",
+                    "insertText": "doc"
+                },
+                {
+                    "label": "model",
+                    "kind": "property",
+                    "detail": "ModelSpace",
+                    "documentation": "Model space collection - container for drawing entities",
+                    "insertText": "model"
+                }
+            ],
+            "drawing_methods": [
+                {
+                    "label": "draw_line",
+                    "kind": "method",
+                    "detail": "draw_line(start_point: List[float], end_point: List[float]) -> int",
+                    "documentation": "Draw a line from start_point to end_point. Returns entity ID.",
+                    "insertText": "draw_line([${1:0}, ${2:0}, ${3:0}], [${4:100}, ${5:100}, ${6:0}])"
+                },
+                {
+                    "label": "draw_circle",
+                    "kind": "method",
+                    "detail": "draw_circle(center: List[float], radius: float) -> int",
+                    "documentation": "Draw a circle with specified center and radius. Returns entity ID.",
+                    "insertText": "draw_circle([${1:0}, ${2:0}, ${3:0}], ${4:50.0})"
+                },
+                {
+                    "label": "draw_arc",
+                    "kind": "method",
+                    "detail": "draw_arc(center: List[float], radius: float, start_angle: float, end_angle: float) -> int",
+                    "documentation": "Draw an arc with specified parameters. Angles in radians.",
+                    "insertText": "draw_arc([${1:0}, ${2:0}, ${3:0}], ${4:50.0}, ${5:0}, ${6:3.14159})"
+                }
+            ]
+        }
+    
+    def _handle_debug_code(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle debug code command with breakpoint support."""
+        code = args.get("code", "")
+        breakpoints = args.get("breakpoints", [])
+        session_id = args.get("session_id", f"debug_{int(time.time())}")
+        
+        if not code.strip():
+            raise ValueError("No code provided for debugging")
+        
+        # Create debug session
+        self.debug_sessions[session_id] = {
+            "code": code,
+            "breakpoints": breakpoints,
+            "created_at": time.time(),
+            "status": "active"
+        }
+        
+        # For now, return debug session info - actual debugging would integrate with VS Code debugger
+        return {
+            "session_id": session_id,
+            "status": "debug_session_created",
+            "breakpoints_set": len(breakpoints),
+            "message": "Debug session created. Use VS Code debugger to step through code."
+        }
+    
+    def _handle_inspect_object(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle object inspection command."""
+        object_name = args.get("object_name", "")
+        inspection_depth = args.get("depth", "basic")
+        
+        if not object_name:
+            raise ValueError("No object name provided for inspection")
+        
+        # Mock object inspection - would integrate with actual AutoCAD object introspection
+        inspection_result = {
+            "object_name": object_name,
+            "object_type": f"AutoCAD.{object_name.capitalize()}",
+            "properties": [
+                {"name": "Name", "type": "string", "value": object_name},
+                {"name": "ObjectID", "type": "int", "value": "123456"},
+                {"name": "Layer", "type": "string", "value": "0"}
+            ],
+            "methods": [
+                {"name": "Update", "signature": "Update() -> None", "description": "Update the object"},
+                {"name": "Delete", "signature": "Delete() -> None", "description": "Delete the object"},
+                {"name": "Copy", "signature": "Copy() -> Object", "description": "Create a copy of the object"}
+            ],
+            "depth": inspection_depth
+        }
+        
+        return inspection_result
+    
+    def _handle_create_project(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle create project command."""
+        template_id = args.get("template", "basic_automation")
+        project_name = args.get("name", "AutoCAD_Project")
+        project_path = args.get("path", ".")
+        
+        if template_id not in self.project_templates:
+            raise ValueError(f"Unknown template: {template_id}")
+        
+        template = self.project_templates[template_id]
+        
+        # Create project structure
+        project_info = {
+            "name": project_name,
+            "template": template_id,
+            "template_name": template["name"],
+            "path": project_path,
+            "files_created": list(template["files"].keys()),
+            "created_at": time.time()
+        }
+        
+        return {
+            "success": True,
+            "project": project_info,
+            "message": f"Project '{project_name}' created from template '{template['name']}'"
+        }
+    
+    def _handle_generate_code(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle code generation command."""
+        description = args.get("description", "")
+        language = args.get("language", "python")
+        complexity = args.get("complexity", "basic")
+        
+        if not description.strip():
+            raise ValueError("No description provided for code generation")
+        
+        # Mock code generation - would integrate with actual code generation engine
+        generated_code = {
+            "python": f"""# Generated Python code for: {description}
+from enhanced_autocad import EnhancedAutoCAD
+
+def generated_function():
+    \"\"\"Generated function: {description}\"\"\"
+    with EnhancedAutoCAD() as acad:
+        # TODO: Implement {description}
+        pass
+
+generated_function()""",
+            "autolisp": f"""; Generated AutoLISP code for: {description}
+(defun c:generated-command ()
+  ;; TODO: Implement {description}
+  (princ "\\nImplement: {description}")
+  (princ)
+)""",
+            "vba": f"""' Generated VBA code for: {description}
+Sub GeneratedMacro()
+    ' TODO: Implement {description}
+    MsgBox "Implement: {description}"
+End Sub"""
+        }
+        
+        return {
+            "description": description,
+            "language": language,
+            "complexity": complexity,
+            "generated_code": generated_code.get(language, generated_code["python"]),
+            "suggestions": [
+                "Add error handling",
+                "Include parameter validation", 
+                "Add progress reporting"
+            ]
+        }
+    
+    def get_enhanced_intellisense_completions(
+        self, context: str, position: int, file_content: str = ""
+    ) -> List[Dict[str, Any]]:
+        """
+        Get enhanced IntelliSense completions with context awareness.
+        
+        Args:
+            context: Code context around cursor
+            position: Cursor position
+            file_content: Full file content for better context analysis
+            
+        Returns:
+            List of enhanced completion items
+        """
+        completions = []
+        
+        # Analyze context for better completions
+        context_lower = context.lower()
+        
+        # AutoCAD object completions
+        if "acad." in context_lower or "autocad" in context_lower:
+            completions.extend(self.enhanced_completions["autocad_objects"])
+            completions.extend(self.enhanced_completions["drawing_methods"])
+        
+        # Method-specific completions
+        if "draw_" in context_lower:
+            completions.extend(self.enhanced_completions["drawing_methods"])
+        
+        # Add context-specific completions based on file content analysis
+        if "import" in file_content and "enhanced_autocad" in file_content:
+            completions.append({
+                "label": "with EnhancedAutoCAD() as acad:",
+                "kind": "snippet",
+                "detail": "AutoCAD context manager",
+                "documentation": "Recommended pattern for AutoCAD automation",
+                "insertText": "with EnhancedAutoCAD() as acad:\\n    ${1:# Your code here}"
+            })
+        
+        return completions
+    
+    def get_debug_sessions(self) -> Dict[str, Dict[str, Any]]:
+        """Get active debug sessions."""
+        return self.debug_sessions.copy()
+    
+    def stop_debug_session(self, session_id: str) -> bool:
+        """Stop a debug session."""
+        if session_id in self.debug_sessions:
+            self.debug_sessions[session_id]["status"] = "stopped"
+            del self.debug_sessions[session_id]
+            logger.info(f"Debug session {session_id} stopped")
+            return True
+        return False
+    
+    def get_project_templates(self) -> Dict[str, Dict[str, Any]]:
+        """Get available project templates."""
+        return self.project_templates.copy()

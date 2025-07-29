@@ -12,6 +12,9 @@ import time
 from typing import Optional, Dict, Any
 from threading import Lock
 
+# Setup logger first
+logger = logging.getLogger(__name__)
+
 # Optional Windows COM imports - graceful degradation if not available
 try:
     import pythoncom
@@ -20,12 +23,9 @@ try:
     COM_AVAILABLE = True
 except ImportError:
     COM_AVAILABLE = False
-    logger = logging.getLogger(__name__)
     logger.warning(
         "Windows COM modules not available - enhanced AutoCAD functionality will be limited"
     )
-
-logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
