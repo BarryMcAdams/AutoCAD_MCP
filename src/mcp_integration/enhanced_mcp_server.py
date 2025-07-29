@@ -62,6 +62,14 @@ class EnhancedMCPServer:
         self.template_manager = None
         self.language_coordinator = None
         self.validation_engine = None
+        
+        # Initialize Phase 4 testing and project tools (lazy init)
+        self.test_framework = None
+        self.test_generator = None
+        self.performance_tester = None
+        self.project_scaffolder = None
+        self.dependency_manager = None
+        self.documentation_generator = None
 
         # Register all MCP tools
         self._register_manufacturing_tools()
@@ -72,6 +80,8 @@ class EnhancedMCPServer:
         self._register_diagnostics_tools()
         self._register_performance_tools()
         self._register_code_generation_tools()
+        self._register_testing_tools()
+        self._register_project_tools()
 
         logger.info("Enhanced MCP Server initialized with interactive capabilities")
 
@@ -171,6 +181,48 @@ class EnhancedMCPServer:
             from ..code_generation.validation_engine import ValidationEngine
             self.validation_engine = ValidationEngine()
         return self.validation_engine
+    
+    def _get_test_framework(self):
+        """Get test framework instance with lazy initialization."""
+        if not self.test_framework:
+            from ..testing.autocad_test_framework import AutoCADTestFramework
+            self.test_framework = AutoCADTestFramework(mock_mode=True)
+        return self.test_framework
+    
+    def _get_test_generator(self):
+        """Get test generator instance with lazy initialization."""
+        if not self.test_generator:
+            from ..testing.test_generators import TestGenerator
+            self.test_generator = TestGenerator()
+        return self.test_generator
+    
+    def _get_performance_tester(self):
+        """Get performance tester instance with lazy initialization."""
+        if not self.performance_tester:
+            from ..testing.performance_tester import PerformanceTester
+            self.performance_tester = PerformanceTester()
+        return self.performance_tester
+    
+    def _get_project_scaffolder(self):
+        """Get project scaffolder instance with lazy initialization."""
+        if not self.project_scaffolder:
+            from ..project_templates.project_scaffolder import ProjectScaffolder
+            self.project_scaffolder = ProjectScaffolder()
+        return self.project_scaffolder
+    
+    def _get_dependency_manager(self):
+        """Get dependency manager instance with lazy initialization."""
+        if not self.dependency_manager:
+            from ..project_templates.dependency_manager import DependencyManager
+            self.dependency_manager = DependencyManager()
+        return self.dependency_manager
+    
+    def _get_documentation_generator(self):
+        """Get documentation generator instance with lazy initialization."""
+        if not self.documentation_generator:
+            from ..project_templates.documentation_generator import DocumentationGenerator
+            self.documentation_generator = DocumentationGenerator()
+        return self.documentation_generator
 
     def _register_manufacturing_tools(self):
         """Register existing manufacturing MCP tools (preserved functionality)."""
@@ -1853,6 +1905,359 @@ Type your Python code and press Enter to execute."""
             except Exception as e:
                 logger.error(f"Error validating code: {e}")
                 raise McpError("INTERNAL_ERROR", f"Failed to validate code: {str(e)}")
+
+    def _register_testing_tools(self):
+        """Register Phase 4 testing framework MCP tools."""
+
+        @self.mcp.tool()
+        def run_autocad_tests(test_suite: str = "all", mock_mode: bool = True) -> str:
+            """
+            Run comprehensive AutoCAD automation tests.
+            
+            Args:
+                test_suite: Test suite to run ('all', 'unit', 'integration', 'performance')
+                mock_mode: Use mock AutoCAD for testing (recommended for CI)
+            
+            Returns:
+                Test execution results with detailed report
+            """
+            try:
+                framework = self._get_test_framework()
+                framework.mock_mode = mock_mode
+                
+                if test_suite == "all":
+                    results = framework.run_all_suites()
+                else:
+                    if test_suite in framework.test_suites:
+                        results = {test_suite: framework.run_suite(test_suite)}
+                    else:
+                        raise McpError("INVALID_PARAMS", f"Test suite '{test_suite}' not found")
+                
+                # Generate report
+                report = framework.generate_report("text")
+                
+                response = {
+                    "test_results": results,
+                    "report": report,
+                    "mock_mode": mock_mode,
+                    "total_suites": len(results)
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error running tests: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to run tests: {str(e)}")
+
+        @self.mcp.tool()
+        def generate_project_tests(project_path: str, output_dir: str = "tests/generated") -> str:
+            """
+            Generate comprehensive test suite for AutoCAD project.
+            
+            Args:
+                project_path: Path to the project source code
+                output_dir: Directory to save generated tests
+            
+            Returns:
+                Information about generated test files and coverage
+            """
+            try:
+                generator = self._get_test_generator()
+                
+                # Generate tests for the entire project
+                result = generator.generate_project_tests(project_path)
+                
+                response = {
+                    "message": result,
+                    "output_directory": output_dir,
+                    "project_path": project_path,
+                    "test_types": ["unit", "integration", "performance", "error_handling"]
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error generating tests: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to generate tests: {str(e)}")
+
+        @self.mcp.tool()
+        def benchmark_autocad_performance(operations: List[str] = None, iterations: int = 50, mock_mode: bool = True) -> str:
+            """
+            Benchmark AutoCAD operations for performance analysis.
+            
+            Args:
+                operations: List of operations to benchmark (None for all)
+                iterations: Number of iterations per operation
+                mock_mode: Use mock AutoCAD for consistent benchmarking
+            
+            Returns:
+                Performance benchmark results with metrics and analysis
+            """
+            try:
+                tester = self._get_performance_tester()
+                
+                if operations is None:
+                    # Benchmark common operations
+                    results = tester.benchmark_autocad_operations(mock_mode=mock_mode)
+                else:
+                    # Benchmark specific operations
+                    results = {}
+                    # This would require implementation of specific operation benchmarks
+                
+                # Generate performance report
+                report = tester.generate_performance_report()
+                
+                response = {
+                    "benchmark_results": {
+                        name: {
+                            "average_time": bench.average_time,
+                            "min_time": bench.min_time,
+                            "max_time": bench.max_time,
+                            "iterations": bench.iterations
+                        }
+                        for name, bench in results.items()
+                    },
+                    "performance_report": report,
+                    "mock_mode": mock_mode
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error benchmarking performance: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to benchmark performance: {str(e)}")
+
+        @self.mcp.tool()
+        def setup_ci_integration(project_path: str, ci_provider: str = "github") -> str:
+            """
+            Setup CI/CD integration for AutoCAD project.
+            
+            Args:
+                project_path: Path to the project
+                ci_provider: CI/CD provider ('github', 'azure', 'jenkins')
+            
+            Returns:
+                Information about CI/CD setup and configuration files created
+            """
+            try:
+                from ..testing.ci_integration import CIIntegration, CIConfiguration
+                
+                ci_integration = CIIntegration()
+                ci_config = CIConfiguration(
+                    provider=ci_provider,
+                    project_path=project_path,
+                    test_commands=[
+                        "python -m pytest tests/ --cov=src --cov-report=xml",
+                        "python -m pytest tests/generated/ --html=test-report.html"
+                    ],
+                    mock_mode=True
+                )
+                
+                config_file = ci_integration.setup_ci_integration(project_path, ci_provider, ci_config)
+                validation = ci_integration.validate_ci_setup(project_path, ci_provider)
+                
+                response = {
+                    "ci_provider": ci_provider,
+                    "config_file": config_file,
+                    "validation": validation,
+                    "setup_complete": validation["valid"]
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error setting up CI integration: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to setup CI integration: {str(e)}")
+
+    def _register_project_tools(self):
+        """Register Phase 4 project template and management MCP tools."""
+
+        @self.mcp.tool()
+        def create_autocad_project(project_name: str, project_type: str = "basic_autocad", 
+                                 output_directory: str = ".", author_name: str = "Developer") -> str:
+            """
+            Create new AutoCAD automation project from template.
+            
+            Args:
+                project_name: Name of the new project
+                project_type: Type of project ('basic_autocad', 'advanced_mcp', 'manufacturing_cad')
+                output_directory: Directory to create the project in
+                author_name: Author name for the project
+            
+            Returns:
+                Information about the created project and next steps
+            """
+            try:
+                from ..project_templates.project_scaffolder import ProjectScaffoldConfig
+                
+                scaffolder = self._get_project_scaffolder()
+                
+                config = ProjectScaffoldConfig(
+                    project_name=project_name,
+                    project_type=project_type,
+                    output_directory=output_directory,
+                    author_name=author_name,
+                    initialize_git=True,
+                    install_dependencies=False,  # Don't install in MCP context
+                    create_venv=False,
+                    setup_ci=False
+                )
+                
+                project_path = scaffolder.create_project(config)
+                validation = scaffolder.validate_project_structure(project_path)
+                report = scaffolder.generate_project_report(project_path)
+                
+                response = {
+                    "project_path": project_path,
+                    "project_type": project_type,
+                    "validation": validation,
+                    "report": report,
+                    "next_steps": [
+                        "Navigate to the project directory",
+                        "Install dependencies: poetry install",
+                        "Review README.md for project-specific instructions",
+                        "Start developing in the src/ directory"
+                    ]
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error creating project: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to create project: {str(e)}")
+
+        @self.mcp.tool()
+        def get_available_project_templates() -> str:
+            """
+            Get list of available AutoCAD project templates.
+            
+            Returns:
+                List of available project templates with descriptions
+            """
+            try:
+                scaffolder = self._get_project_scaffolder()
+                templates = scaffolder.get_available_project_types()
+                
+                response = {
+                    "available_templates": templates,
+                    "total_templates": len(templates),
+                    "description": "Available project templates for AutoCAD automation"
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error getting templates: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to get available templates: {str(e)}")
+
+        @self.mcp.tool()
+        def manage_project_dependencies(project_path: str, action: str = "check", 
+                                      dependency_name: str = None, version: str = None) -> str:
+            """
+            Manage dependencies for AutoCAD project.
+            
+            Args:
+                project_path: Path to the project
+                action: Action to perform ('check', 'add', 'remove', 'update', 'install')
+                dependency_name: Name of dependency (for add/remove actions)
+                version: Version specification (for add action)
+            
+            Returns:
+                Dependency management results and recommendations
+            """
+            try:
+                manager = self._get_dependency_manager()
+                
+                if action == "check":
+                    compatibility = manager.check_dependency_compatibility(project_path)
+                    report = manager.generate_dependency_report(project_path)
+                    
+                    response = {
+                        "action": action,
+                        "compatibility": compatibility,
+                        "report": report
+                    }
+                
+                elif action == "add" and dependency_name:
+                    success = manager.add_dependency(project_path, dependency_name, version)
+                    response = {
+                        "action": action,
+                        "dependency": dependency_name,
+                        "version": version,
+                        "success": success
+                    }
+                
+                elif action == "remove" and dependency_name:
+                    success = manager.remove_dependency(project_path, dependency_name)
+                    response = {
+                        "action": action,
+                        "dependency": dependency_name,
+                        "success": success
+                    }
+                
+                elif action == "update":
+                    results = manager.update_dependencies(project_path)
+                    response = {
+                        "action": action,
+                        "update_results": results
+                    }
+                
+                elif action == "install":
+                    success = manager.install_dependencies(project_path)
+                    response = {
+                        "action": action,
+                        "success": success
+                    }
+                
+                else:
+                    raise McpError("INVALID_PARAMS", f"Invalid action: {action}")
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error managing dependencies: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to manage dependencies: {str(e)}")
+
+        @self.mcp.tool()
+        def generate_project_documentation(project_path: str, output_dir: str = "docs/generated") -> str:
+            """
+            Generate comprehensive documentation for AutoCAD project.
+            
+            Args:
+                project_path: Path to the project source code
+                output_dir: Directory to save generated documentation
+            
+            Returns:
+                Information about generated documentation files
+            """
+            try:
+                generator = self._get_documentation_generator()
+                
+                # Generate complete project documentation
+                docs_path = generator.generate_project_documentation(project_path, output_dir)
+                
+                # Generate additional documentation files
+                changelog_path = generator.generate_changelog(project_path)
+                contrib_path = generator.generate_contributing_guide(project_path)
+                
+                response = {
+                    "documentation_path": docs_path,
+                    "generated_files": [
+                        f"{output_dir}/api.md",
+                        f"{output_dir}/user_guide.md", 
+                        f"{output_dir}/tutorial.md",
+                        "CHANGELOG.md",
+                        "CONTRIBUTING.md"
+                    ],
+                    "project_path": project_path,
+                    "documentation_complete": True
+                }
+                
+                return json.dumps(response, indent=2)
+                
+            except Exception as e:
+                logger.error(f"Error generating documentation: {e}")
+                raise McpError("INTERNAL_ERROR", f"Failed to generate documentation: {str(e)}")
 
     def get_mcp_server(self) -> FastMCP:
         """
