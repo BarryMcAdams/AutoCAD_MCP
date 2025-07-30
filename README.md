@@ -213,6 +213,6 @@ This AutoCAD MCP platform has achieved **100% enterprise deployment confidence**
 
 ---
 
-<p align="center">
-  <em>Made with ❤️ for the AutoCAD community.</em>
-</p>
+**AutoCAD MCP Server** - Transforming Manufacturing CAD Workflows
+
+With love ❤️ to our amazing AutoCAD community around the world  ~  Barry Adams, Florida USA
