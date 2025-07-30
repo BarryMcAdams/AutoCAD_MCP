@@ -2261,7 +2261,7 @@ Type your Python code and press Enter to execute."""
 
     # Phase 4: Testing Framework Tools
     
-    @mcp.tool("generate_tests_for_file")
+    # Tool will be registered in setup_tools method
     async def generate_tests_for_file(
         self,
         file_path: str,
@@ -2314,7 +2314,7 @@ Type your Python code and press Enter to execute."""
             logger.error(f"Error generating tests: {e}")
             raise McpError("INTERNAL_ERROR", f"Failed to generate tests: {str(e)}")
     
-    @mcp.tool("run_autocad_tests")
+    # Tool will be registered in setup_tools method
     async def run_autocad_tests(
         self,
         test_path: str,
@@ -2357,7 +2357,7 @@ Type your Python code and press Enter to execute."""
             logger.error(f"Error running tests: {e}")
             raise McpError("INTERNAL_ERROR", f"Failed to run tests: {str(e)}")
     
-    @mcp.tool("create_project_from_template")
+    # Tool will be registered in setup_tools method
     async def create_project_from_template(
         self,
         template_name: str,
@@ -2415,7 +2415,7 @@ Type your Python code and press Enter to execute."""
             logger.error(f"Error creating project: {e}")
             raise McpError("INTERNAL_ERROR", f"Failed to create project: {str(e)}")
     
-    @mcp.tool("generate_ci_config")
+    # Tool will be registered in setup_tools method
     async def generate_ci_config(
         self,
         provider: str,
