@@ -44,13 +44,13 @@
 
 ## ✨ Overview
 
-The **AutoCAD MCP Server** is a comprehensive Model Context Protocol (MCP) server designed to revolutionize AutoCAD development and manufacturing workflows. This advanced system integrates cutting-edge AI capabilities with AutoCAD 2025, providing developers and engineers with powerful tools for automation, code generation, and intelligent design assistance. 
+This **AutoCAD MCP Server** is a comprehensive Model Context Protocol (MCP) server designed to assist my AutoCAD development and manufacturing workflows. This advanced system integrates cutting-edge AI capabilities with AutoCAD 2025, providing developers and engineers with powerful tools for automation, code generation, and intelligent design assistance. 
 
-Built with **Python 3.12** and leveraging **Flask 3.0**, the server transforms traditional CAD processes into intelligent, automated workflows that enhance productivity and innovation across the manufacturing and design industries.
+Built with **Python 3.12** and leveraging **Flask 3.0**, this mcp server was made to turn some of my traditional CAD processes into intelligent, automated workflows that enhance productivity and innovation across the manufacturing and design industries.
 
 ### 🎯 Target Audience
 
-**TARGET AUDIENCE:** CAD professionals in engineering, manufacturing, and architecture using AutoCAD 2025 on Windows, who require custom utilities for 3D-to-2D transformations and presentation automation.
+**TARGET AUDIENCE:** CAD and code programming professionals involved in engineering, manufacturing, and architecture using AutoCAD 2025 on Windows, who may want to author custom utilities for 3D-to-2D transformations and presentation automation.
 
 ---
 
