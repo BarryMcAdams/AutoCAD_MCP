@@ -48,6 +48,10 @@ The **AutoCAD MCP Server** is a comprehensive Model Context Protocol (MCP) serve
 
 Built with **Python 3.12** and leveraging **Flask 3.0**, the server transforms traditional CAD processes into intelligent, automated workflows that enhance productivity and innovation across the manufacturing and design industries.
 
+### 🎯 Target Audience
+
+**TARGET AUDIENCE:** CAD professionals in engineering, manufacturing, and architecture using AutoCAD 2025 on Windows, who require custom utilities for 3D-to-2D transformations and presentation automation.
+
 ---
 
 ## 🌟 Key Features
@@ -473,7 +477,7 @@ The AutoCAD MCP Server includes sophisticated AI-powered code generation capabil
 
 2. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install fastmcp flask python-dotenv
    ```
 
 3. **Install the package:**
@@ -679,7 +683,7 @@ This project was developed by **Barry Adams** using **Visual Studio Code** and v
 
 | Resource | Description |
 |----------|-------------|
-| 📚 **Documentation** | Comprehensive documentation available in the `docs/` directory |
+| 📚 **Documentation** | Comprehensive guides and tutorials available in the [docs/](docs/) directory |
 | 🐛 **Issues** | Report bugs and request features on GitHub Issues |
 | 💬 **Discussions** | Join discussions on GitHub Discussions |
 | 📧 **Email** | info@CADcoLabs.com |
@@ -695,7 +699,7 @@ This project was developed by **Barry Adams** using **Visual Studio Code** and v
 |------------------|----------|
 | 💻 **Code Contributions** | All pull requests and contributions are welcome! |
 | 📋 **Code of Conduct** | Please follow the [Code of Conduct](CODE_OF_CONDUCT.md) |
-| 🐛 **Bug Reports** | Help me improve by reporting bugs and issues |
+| 🐛 **Bug Reports** | Help improve the project by reporting bugs and issues |
 | 💡 **Feature Requests** | Suggest new features and improvements |
 | 📚 **Documentation** | Help improve documentation and examples |
 
@@ -709,7 +713,7 @@ This project was developed by **Barry Adams** using **Visual Studio Code** and v
 
 </div>
 
-The AutoCAD MCP Server is currently in active testing phase. While core functionality is complete and the system has undergone extensive internal testing, we are seeking volunteer testers from the AutoCAD community to help identify edge cases and provide feedback on real-world usage.
+The AutoCAD MCP Server is currently in active testing phase. While core functionality is complete and the system has undergone extensive internal testing, I am seeking volunteer testers from the AutoCAD community to help identify edge cases and provide feedback on real-world usage.
 
 ### 📈 Current Status
 
@@ -727,7 +731,7 @@ The AutoCAD MCP Server is currently in active testing phase. While core function
 
 </div>
 
-We are looking for:
+I am looking for:
 
 - **👑 AutoCAD Power Users**: To test real-world usage scenarios
 - **👨‍💻 Developers**: To test API integration and extensibility
@@ -749,69 +753,15 @@ We are looking for:
 
 ---
 
-<div align="center">
+## 🚀 Project Status: Production Ready ✅
 
-## 🏆 Production Deployment Status
+This AutoCAD MCP platform is **production-ready** with enterprise-grade code across 80+ modules. All objectives achieved with 95/100 quality metrics.
 
-### ✅ **APPROVED**
+**Ready for:** Enterprise deployment • Open source contribution • Real-world professional use
 
-</div>
+**Future Enhancements:** Additional CAD platform support • Advanced AI/ML features • Extended collaboration tools • Industry-specific templates
 
-This AutoCAD MCP platform has achieved **100% enterprise deployment confidence** and is ready for immediate production deployment with:
-
-<div align="center">
-
-| Security Feature | Status |
-|------------------|--------|
-| Multi-layer security scanning and monitoring | ✅ |
-| Advanced rate limiting and abuse prevention | ✅ |
-| Scalable containerized deployment architecture | ✅ |
-| Comprehensive operational monitoring and alerting | ✅ |
-| Complete CI/CD pipeline with automated security validation | ✅ |
-
-</div>
-
-**Total Platform Status:** Enterprise-grade code across 80+ modules, all objectives achieved. Integrity and security is complete and this AutoCAD_MCP is now deployment and production-ready.
-
-<div align="center">
-
-### 🚀 This project is now ready for:
-
-</div>
-
-- 🏢 **Enterprise deployment in production environments**
-- 🌐 **Open source community building and contribution**
-- 👥 **Real-world usage by AutoCAD professionals and developers**
-
-<div align="center">
-
-### 🔮 Potential Future Enhancements *(get onboard! This means, YOU)*
-
-</div>
-
-- 🔧 **Additional CAD platform support** (SolidWorks, Inventor)
-- 🤖 **Advanced AI/ML features** based on user feedback - the discussion area of this repo is open for discussion and feedback
-- 👥 **Extended collaboration features** for larger teams
-- 🏭 **Industry-specific templates and workflows** - please contribute your ideas and templates to the discussion area here
-
-<div align="center">
-
-### 📊 Final Summary
-
-**Project Achievement: ✅ COMPLETE**
-
-</div>
-
-| Achievement | Status |
-|------------|--------|
-| All objectives met or exceeded | ✅ |
-| Production deployment ready | ✅ |
-| Zero critical issues remaining | ✅ |
-| Excellent quality metrics achieved (95/100) | ✅ |
-
-The AutoCAD MCP Server is now a complete, production-ready platform that successfully transforms AutoCAD development with AI-powered capabilities, enterprise security, and comprehensive automation tools.
-
-Your feedback is invaluable in making the AutoCAD MCP Server a robust, reliable, and valuable tool for the AutoCAD community.
+*Your feedback helps make this a valuable tool for the AutoCAD community.*
 
 ---
 
@@ -819,7 +769,7 @@ Your feedback is invaluable in making the AutoCAD MCP Server a robust, reliable,
 
 ## 🎯 **AutoCAD MCP Server** - Transforming Manufacturing CAD Workflows
 
-**With love ❤️ to our amazing AutoCAD community around the world ~ Barry Adams, Florida USA**
+**With love ❤️ to our amazing AutoCAD community around the world ~ [Barry Adams](mailto:info@CADcoLabs.com), Florida USA**
 
 ---
 

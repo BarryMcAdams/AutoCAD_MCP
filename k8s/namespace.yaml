@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: autocad-mcp
-  labels:
-    name: autocad-mcp
-    app: autocad-mcp-platform
