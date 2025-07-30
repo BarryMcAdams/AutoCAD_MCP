@@ -6,9 +6,15 @@ including benchmarking, profiling, and performance regression detection.
 """
 
 import time
-import psutil
 import logging
 import statistics
+
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    psutil = None
+    HAS_PSUTIL = False
 from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass, field
 from contextlib import contextmanager

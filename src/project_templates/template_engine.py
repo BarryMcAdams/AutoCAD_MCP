@@ -11,8 +11,16 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
-from jinja2 import Environment, FileSystemLoader, Template
 import shutil
+
+try:
+    from jinja2 import Environment, FileSystemLoader, Template
+    HAS_JINJA2 = True
+except ImportError:
+    Environment = None
+    FileSystemLoader = None
+    Template = None
+    HAS_JINJA2 = False
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +49,16 @@ class TemplateEngine:
         self.templates_dir = Path(templates_dir)
         self.templates_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize Jinja2 environment
-        self.jinja_env = Environment(
-            loader=FileSystemLoader(str(self.templates_dir)),
-            trim_blocks=True,
-            lstrip_blocks=True
-        )
+        # Initialize Jinja2 environment if available
+        if HAS_JINJA2:
+            self.jinja_env = Environment(
+                loader=FileSystemLoader(str(self.templates_dir)),
+                trim_blocks=True,
+                lstrip_blocks=True
+            )
+        else:
+            self.jinja_env = None
+            logger.warning("Jinja2 not available - using simple string replacement for templates")
         
         self.templates: Dict[str, ProjectTemplate] = {}
         self._initialize_builtin_templates()

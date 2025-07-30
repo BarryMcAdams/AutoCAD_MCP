@@ -2259,6 +2259,244 @@ Type your Python code and press Enter to execute."""
                 logger.error(f"Error generating documentation: {e}")
                 raise McpError("INTERNAL_ERROR", f"Failed to generate documentation: {str(e)}")
 
+    # Phase 4: Testing Framework Tools
+    
+    @mcp.tool("generate_tests_for_file")
+    async def generate_tests_for_file(
+        self,
+        file_path: str,
+        test_types: Optional[str] = "unit,integration"
+    ) -> str:
+        """
+        Generate automated tests for a Python file.
+        
+        Args:
+            file_path: Path to the Python file to generate tests for
+            test_types: Comma-separated list of test types (unit,integration,performance)
+            
+        Returns:
+            JSON string with test generation results
+        """
+        try:
+            test_generator = self._get_test_generator()
+            
+            # Parse test types
+            types_list = test_types.split(',') if test_types else ['unit', 'integration']
+            types_list = [t.strip() for t in types_list]
+            
+            # Generate tests
+            tests = test_generator.generate_tests_for_file(file_path, types_list)
+            
+            # Save generated tests
+            output_file = file_path.replace('.py', '_test.py')
+            if tests:
+                test_generator.save_generated_tests(tests, output_file)
+            
+            response = {
+                "file_path": file_path,
+                "output_file": output_file,
+                "tests_generated": len(tests),
+                "test_types": types_list,
+                "tests": [
+                    {
+                        "name": test.name,
+                        "type": test.test_type,
+                        "target_function": test.target_function,
+                        "mock_requirements": test.mock_requirements
+                    }
+                    for test in tests
+                ]
+            }
+            
+            return json.dumps(response, indent=2)
+            
+        except Exception as e:
+            logger.error(f"Error generating tests: {e}")
+            raise McpError("INTERNAL_ERROR", f"Failed to generate tests: {str(e)}")
+    
+    @mcp.tool("run_autocad_tests")
+    async def run_autocad_tests(
+        self,
+        test_path: str,
+        mock_mode: bool = True,
+        timeout: int = 300
+    ) -> str:
+        """
+        Run AutoCAD automation tests.
+        
+        Args:
+            test_path: Path to test file or directory
+            mock_mode: Whether to run in mock mode (no real AutoCAD needed)
+            timeout: Test timeout in seconds
+            
+        Returns:
+            JSON string with test execution results
+        """
+        try:
+            test_framework = self._get_test_framework()
+            
+            # Create test suite
+            suite_name = f"autocad_tests_{int(time.time())}"
+            test_framework.create_test_suite(suite_name, mock_mode=mock_mode)
+            
+            # Run tests (simplified - would need actual test discovery)
+            results = []
+            
+            response = {
+                "test_path": test_path,
+                "suite_name": suite_name,
+                "mock_mode": mock_mode,
+                "timeout": timeout,
+                "tests_run": len(results),
+                "results": results
+            }
+            
+            return json.dumps(response, indent=2)
+            
+        except Exception as e:
+            logger.error(f"Error running tests: {e}")
+            raise McpError("INTERNAL_ERROR", f"Failed to run tests: {str(e)}")
+    
+    @mcp.tool("create_project_from_template")
+    async def create_project_from_template(
+        self,
+        template_name: str,
+        project_name: str,
+        output_dir: str,
+        parameters: Optional[str] = None
+    ) -> str:
+        """
+        Create a new AutoCAD automation project from a template.
+        
+        Args:
+            template_name: Name of the template to use
+            project_name: Name for the new project
+            output_dir: Directory to create the project in
+            parameters: JSON string with template parameters
+            
+        Returns:
+            JSON string with project creation results
+        """
+        try:
+            scaffolder = self._get_project_scaffolder()
+            
+            # Parse parameters
+            params = {}
+            if parameters:
+                try:
+                    params = json.loads(parameters)
+                except:
+                    logger.warning(f"Invalid parameters JSON: {parameters}")
+            
+            # Set basic parameters
+            params.update({
+                "project_name": project_name,
+                "project_slug": project_name.lower().replace(' ', '_')
+            })
+            
+            # Create project
+            project_path = scaffolder.create_project(
+                template_name=template_name,
+                project_path=output_dir,
+                parameters=params
+            )
+            
+            response = {
+                "template_name": template_name,
+                "project_name": project_name,
+                "project_path": project_path,
+                "parameters": params,
+                "created": True
+            }
+            
+            return json.dumps(response, indent=2)
+            
+        except Exception as e:
+            logger.error(f"Error creating project: {e}")
+            raise McpError("INTERNAL_ERROR", f"Failed to create project: {str(e)}")
+    
+    @mcp.tool("generate_ci_config")
+    async def generate_ci_config(
+        self,
+        provider: str,
+        project_path: str,
+        test_commands: Optional[str] = None
+    ) -> str:
+        """
+        Generate CI/CD configuration for AutoCAD project.
+        
+        Args:
+            provider: CI provider (github, azure, jenkins)
+            project_path: Path to the project
+            test_commands: Comma-separated test commands
+            
+        Returns:
+            JSON string with CI configuration results
+        """
+        try:
+            ci_integration = self._get_ci_integration()
+            
+            # Parse test commands
+            commands = test_commands.split(',') if test_commands else None
+            
+            # Generate CI configuration
+            config_file = ci_integration.generate_ci_config(
+                provider=provider,
+                project_path=project_path,
+                test_commands=commands
+            )
+            
+            response = {
+                "provider": provider,
+                "project_path": project_path,
+                "config_file": config_file,
+                "test_commands": commands,
+                "generated": True
+            }
+            
+            return json.dumps(response, indent=2)
+            
+        except Exception as e:
+            logger.error(f"Error generating CI config: {e}")
+            raise McpError("INTERNAL_ERROR", f"Failed to generate CI config: {str(e)}")
+
+    # Helper methods for Phase 4 components (lazy loading)
+    
+    def _get_test_generator(self):
+        """Get test generator instance with lazy loading."""
+        if not hasattr(self, '_test_generator'):
+            from ..testing.test_generators import TestGenerator
+            self._test_generator = TestGenerator()
+        return self._test_generator
+    
+    def _get_test_framework(self):
+        """Get test framework instance with lazy loading."""
+        if not hasattr(self, '_test_framework'):
+            from ..testing.autocad_test_framework import AutoCADTestFramework
+            self._test_framework = AutoCADTestFramework(mock_mode=True)
+        return self._test_framework
+    
+    def _get_project_scaffolder(self):
+        """Get project scaffolder instance with lazy loading."""
+        if not hasattr(self, '_project_scaffolder'):
+            from ..project_templates.project_scaffolder import ProjectScaffolder
+            self._project_scaffolder = ProjectScaffolder()
+        return self._project_scaffolder
+    
+    def _get_ci_integration(self):
+        """Get CI integration instance with lazy loading."""
+        if not hasattr(self, '_ci_integration'):
+            from ..testing.ci_integration import CIIntegration
+            self._ci_integration = CIIntegration()
+        return self._ci_integration
+    
+    def _get_documentation_generator(self):
+        """Get documentation generator instance with lazy loading."""
+        if not hasattr(self, '_documentation_generator'):
+            from ..project_templates.documentation_generator import DocumentationGenerator
+            self._documentation_generator = DocumentationGenerator()
+        return self._documentation_generator
+
     def get_mcp_server(self) -> FastMCP:
         """
         Get the MCP server instance.

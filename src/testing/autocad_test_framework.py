@@ -166,26 +166,14 @@ class AutoCADTestFramework:
     
     def _wrap_assertions(self):
         """Wrap built-in assert to count assertions."""
-        original_assert = __builtins__['assert'] if isinstance(__builtins__, dict) else __builtins__.assert
-        
-        def counting_assert(condition, message=""):
-            self.assertion_count += 1
-            if not condition:
-                raise AssertionError(message)
-        
-        if isinstance(__builtins__, dict):
-            __builtins__['assert'] = counting_assert
-        else:
-            __builtins__.assert = counting_assert
-        
-        return original_assert
+        # Note: assert is a keyword, not a function, so we can't override it
+        # Instead, we'll count assertions through test execution monitoring
+        return None
     
     def _restore_assertions(self, original_assert):
         """Restore original assert function."""
-        if isinstance(__builtins__, dict):
-            __builtins__['assert'] = original_assert
-        else:
-            __builtins__.assert = original_assert
+        # No-op since we can't actually override assert
+        pass
     
     def run_suite(self, suite_name: str) -> List[TestResult]:
         """Execute all tests in a test suite."""
