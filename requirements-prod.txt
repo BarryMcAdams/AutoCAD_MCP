@@ -1,0 +1,58 @@
+# Production requirements for AutoCAD MCP Server
+# Core dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# MCP Protocol
+mcp==0.3.0
+
+# AutoCAD Integration (Windows only - graceful fallback on other platforms)
+pywin32==306; sys_platform == "win32"
+
+# HTTP and networking
+httpx==0.25.2
+requests==2.31.0
+websockets==12.0
+
+# Security
+cryptography==41.0.7
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Database and caching (optional)
+redis==5.0.1
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Performance monitoring (optional with fallback)
+psutil==5.9.6
+
+# Template engine (optional with fallback)
+Jinja2==3.1.2
+
+# JSON and data handling
+orjson==3.9.10
+msgpack==1.0.7
+
+# Logging and monitoring
+structlog==23.2.0
+prometheus-client==0.19.0
+
+# Development and testing (for production debugging)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# Code quality (optional)
+black==23.11.0
+ruff==0.1.6
+mypy==1.7.1
+
+# Security scanning (optional)
+bandit==1.7.5
+safety==2.3.5
+
+# Enterprise features
+python-multipart==0.0.6
+python-dotenv==1.0.0
