@@ -1,173 +1,123 @@
 <div align="center">
 
-# 🚀 AutoCAD MCP Server
+# AutoCAD MCP Server
 
 <p align="center">
-  <strong>The AI-powered copilot for modern Computer-Aided Design.</strong>
+  <strong>A Windows-only MCP server for AutoCAD COM automation</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.12+-blue.svg" alt="Python Version">
-  <img src="https://img.shields.io/badge/AutoCAD-2021--2025-orange.svg" alt="AutoCAD Version">
+  <img src="https://img.shields.io/badge/AutoCAD-2025-orange.svg" alt="AutoCAD Version">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/Status-Development-yellow.svg" alt="Status">
-  <img src="https://img.shields.io/badge/Platform-Windows%20Required-red.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Status-Alpha-red.svg" alt="Status">
+  <img src="https://img.shields.io/badge/Platform-Windows%20ONLY-red.svg" alt="Platform">
 </p>
 
 ---
 
 </div>
 
-## ✨ Overview
+## Overview
 
-This **AutoCAD MCP Server** is a comprehensive Model Context Protocol (MCP) server designed to assist my AutoCAD development and manufacturing workflows. This advanced system integrates cutting-edge AI capabilities with AutoCAD 2025, providing developers and engineers with powerful tools for automation, code generation, and intelligent design assistance. 
+This is an experimental Model Context Protocol (MCP) server that provides basic AutoCAD COM automation through Python. It includes some 3D surface unfolding algorithms and basic drawing operations.
 
-Built with **Python 3.12** and leveraging **Flask 3.0**, this mcp server was made to turn some of my traditional CAD processes into intelligent, automated workflows that enhance productivity and innovation across the manufacturing and design industries.
+**⚠️ IMPORTANT**: This project is in early development and requires Windows with AutoCAD 2025 installed. It will not work on Linux, macOS, or without AutoCAD.
 
-### 🎯 Target Audience
+## Current Features
 
-**TARGET AUDIENCE:** CAD and code programming professionals involved in engineering, manufacturing, and architecture using AutoCAD 2025 on Windows, who may want to author custom utilities for 3D-to-2D transformations and presentation automation.
+- Basic AutoCAD drawing operations (lines, circles)
+- 3D extrusion and revolution operations
+- Entity listing and inspection
+- LSCM surface unfolding algorithm (experimental)
+- Simple pattern optimization
 
----
+## Requirements
 
-## 🌟 Key Features
-
-| Feature | Description |
-| :--- | :--- |
-| 🤖 **AI-Powered Development** | Use natural language to generate Python and AutoLISP scripts, get API recommendations, and even predict errors before they happen. |
-| 🏭 **Advanced Manufacturing** | Automate complex tasks like 3D surface unfolding, parametric design, and pattern optimization for maximum material efficiency. |
-| 🏢 **Enterprise Ready** | Built for professional teams with features like multi-user collaboration, security monitoring, and deployment automation. |
-| 🛠️ **Developer Tools** | A comprehensive development framework with a mock AutoCAD system for offline testing, performance benchmarking, and CI/CD integration. |
-
-## 🔧 Requirements
-
-### System Requirements
-- **Windows 10/11** (Required for AutoCAD COM integration)
-- **AutoCAD 2021-2025** installed and licensed
+### Mandatory Requirements
+- **Windows 10/11** (REQUIRED - will not work on other platforms)
+- **AutoCAD 2025** installed and licensed (specific version required)
 - **Python 3.12+**
-- **Poetry** or **UV** package manager (recommended)
 
-### Development Environment
-- This project can be developed on Linux/WSL2 for code editing and testing
-- Full functionality requires Windows deployment for AutoCAD integration
-- Cross-platform testing uses mock implementations for Windows-only components
+### Known Limitations
+- This project uses Windows-specific COM libraries (`pythoncom`, `win32com.client`, `pyautocad`)
+- Will crash immediately on Linux/macOS due to missing Windows dependencies
+- No cross-platform compatibility planned
+- Mock AutoCAD system exists but is not integrated with main functionality
 
-## 🚀 Getting Started
+## Installation (Windows Only)
 
-We have two main guides to help you get started, depending on your background:
+⚠️ **Prerequisites**: Must have AutoCAD 2025 installed and running on Windows
 
-### For AutoCAD Drafters (No Coding Experience)
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/BarryMcAdams/AutoCAD_MCP.git
+   cd AutoCAD_MCP
+   ```
 
-If you're an AutoCAD user who wants to use AI to automate your work, we have a set of detailed, non-technical guides for you. Start here:
+2. **Install dependencies:**
+   ```bash
+   pip install -e .
+   ```
+   Note: `pypiwin32` dependency will fail on non-Windows systems
 
-➡️ **[The AutoCAD Drafter's Guide to Installation & Setup](./docs/01-Installation-Setup.md)**
+3. **Configure MCP client:**
+   - Use the provided `mcp_config.json` 
+   - Update the `cwd` path to your actual installation directory
 
-### For Developers
+4. **Run the server:**
+   ```bash
+   python src/mcp_server.py
+   ```
 
-If you're a developer who wants to build on top of the AutoCAD MCP Server, you can get started with the following steps:
+**Troubleshooting:**
+- If imports fail, you're probably not on Windows
+- If AutoCAD connection fails, ensure AutoCAD 2025 is running
+- Path issues: Update `mcp_config.json` with your actual paths
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/BarryMcAdams/AutoCAD_MCP.git
-    cd AutoCAD_MCP
-    ```
+## Project Status
 
-2.  **Install dependencies:**
-    
-    **Option A: Using Poetry (Recommended)**
-    ```bash
-    poetry install
-    ```
-    
-    **Option B: Using UV**
-    ```bash
-    uv sync
-    ```
-    
-    **Option C: Using pip** 
-    ```bash
-    # First generate requirements.txt from pyproject.toml
-    pip install -e .
-    ```
+This is an **experimental/alpha** project with the following status:
 
-3.  **Run the server:**
-    
-    **With Poetry:**
-    ```bash
-    poetry run python src/mcp_server.py
-    ```
-    
-    **With UV:**
-    ```bash
-    uv run python src/mcp_server.py
-    ```
-    
-    **Direct Python:**
-    ```bash
-    python src/mcp_server.py
-    ```
+### What Works
+- Basic drawing operations (lines, circles) via COM
+- 3D solid creation (extrusion, revolution)
+- Entity inspection and property extraction
+- LSCM algorithm implementation (mathematical)
 
-For more detailed information, please refer to the [developer documentation](./docs/README.md).
+### What's Incomplete
+- Many advanced features are stubbed out or partially implemented
+- Enterprise features exist in code but are untested
+- AI features are framework only
+- Documentation may not match actual functionality
 
-## 🏗️ Architecture Overview
+### Development Notes
+- Developed in Linux/WSL2 environment but deployed to Windows
+- Contains extensive mock systems for testing that aren't used in production
+- Path configurations assume specific Windows directory structure
 
-The AutoCAD MCP Server is built on a modular and scalable architecture. It uses a powerful Python wrapper to communicate with the AutoCAD COM API, and a flexible MCP server framework to expose the AI-powered tools. This design allows for easy extension and integration with other systems.
+## Contributing
 
-<div align="center">
+This is a personal project but contributions are welcome:
 
-```mermaid
-graph TD
-    A[AutoCAD User / Developer] --> B{Claude Desktop / MCP Client};
-    B --> C{AutoCAD MCP Server (Python)};
-    C --> D[Enhanced AutoCAD Wrapper];
-    D --> E[AutoCAD Application];
-```
+- **Issues**: Report bugs or suggest improvements
+- **Testing**: Help test on different Windows/AutoCAD configurations  
+- **Code**: Pull requests welcome for bug fixes or feature completions
 
-</div>
-
-## 💼 Use Cases
-
-*   **Manufacturing:** Automate the creation of flat patterns for sheet metal, HVAC, and other fabrication industries.
-*   **Architecture:** Generate complex and parametric designs for buildings, facades, and other architectural elements.
-*   **Product Design:** Quickly create and iterate on 3D models of products, parts, and assemblies.
-*   **Automation:** Build custom tools and workflows to automate your company's specific AutoCAD processes.
-
-## 🤝 Contributing
-
-We welcome contributions from the community! Whether you're a developer, a CAD expert, or just an enthusiastic user, there are many ways to get involved:
-
-*   **Report bugs:** If you find a bug, please open an issue on our [GitHub Issues](https://github.com/BarryMcAdams/AutoCAD_MCP/issues) page.
-*   **Suggest features:** Have a great idea for a new feature? Let us know on our [GitHub Discussions](https://github.com/BarryMcAdams/AutoCAD_MCP/discussions) page.
-*   **Contribute code:** If you're a developer, we welcome pull requests! Please read our [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information.
+Note: All testing must be done on Windows with AutoCAD 2025.
 
 ## 📄 License
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-This project would not be possible without the following:
-
-*   [Python](https://www.python.org/)
-*   [AutoCAD](https://www.autodesk.com/products/autocad/overview)
-*   [Flask](https://flask.palletsprojects.com/)
-*   [pyautocad](https://pypi.org/project/pyautocad/)
-*   And the many other open-source libraries.
-
-Special thanks to the AutoCAD community for their support and feedback.
+- [pyautocad](https://pypi.org/project/pyautocad/) - Python AutoCAD COM wrapper
+- [FastMCP](https://github.com/anthropics/mcp-python) - MCP server framework
+- NumPy/SciPy - Mathematical operations for surface unfolding
 
 ---
 
-<div align="center">
-## 🎯 **AutoCAD MCP Server** - Transforming Manufacturing CAD Workflows
+**AutoCAD MCP Server** - Experimental AutoCAD automation via MCP
 
-**With love ❤️ to our amazing AutoCAD community around the world ~ [Barry Adams](mailto:info@CADcoLabs.com), Florida USA**
-
----
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Made%20with-❤️-red.svg" alt="Made with Love">
-  <img src="https://img.shields.io/badge/For-AutoCAD%20Community-blue.svg" alt="For AutoCAD Community">
-  <img src="https://img.shields.io/badge/Ready-Production-brightgreen.svg" alt="Production Ready">
-</p>
-</div>
+*This is a personal project for AutoCAD COM automation experiments.*
