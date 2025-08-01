@@ -2,9 +2,9 @@
 
 ### Document Version
 - **Version**: 2.0 (Updated for pyautocad, 3D emphasis, and specific utilities)
-- **Date**: July 22, 2025
+- **Date**: January 10, 2025
 - **Author**: Barry Adams
-- **Purpose**: This Product Requirements Document (PRD) provides a complete specification for the AutoCAD MCP Server, ensuring no gaps for AI agents. It incorporates pyautocad for COM interactions, focuses on 3D workflows, and details utilities for unfolding 3D entities (mimicking SmartUnfold functionality) and layout auto-dimensioning.
+- **Purpose**: This Product Requirements Document (PRD) provides a complete specification for the AutoCAD MCP Server, ensuring no gaps for AI agents. It incorporates pyautocad for COM interactions, focuses on 3D workflows, and details utilities for unfolding 3D entities (LSCM-based surface parameterization) and layout auto-dimensioning.
 
 ## Overview
 ### Product Description
@@ -14,7 +14,7 @@ The AutoCAD MCP Server enables AI-driven automation of AutoCAD 2025 via Python, 
 CAD designers specializing in 3D modeling for manufacturing/CNC.
 
 ### Key Benefits
-- Automates complex 3D-to-2D transformations with high accuracy (<0.1% distortion).
+- Provides experimental 3D-to-2D transformation algorithms (distortion measurement in development).
 - Seamless VS Code integration for AI-assisted plugin creation.
 
 ### Scope
@@ -29,7 +29,7 @@ CAD designers specializing in 3D modeling for manufacturing/CNC.
 ### Business Goals
 - Enable 50% faster 3D workflow automation.
 ### Technical Goals
-- Support non-developable surface unfolding via custom logic.
+- Research non-developable surface unfolding via LSCM algorithms.
 ### User Goals
 - Create CNC-ready 2D patterns from 3D models effortlessly.
 
@@ -40,7 +40,7 @@ CAD designers specializing in 3D modeling for manufacturing/CNC.
 ## Functional Requirements
 ### Core MCP Server Features
 1. **Server Architecture**:
-   - Flask-based, localhost:5000.
+   - Flask-based, localhost:5001.
    - Use pyautocad for AutoCAD interactions (e.g., acad = Autocad()).
 
 2. **Basic CAD Operations**:

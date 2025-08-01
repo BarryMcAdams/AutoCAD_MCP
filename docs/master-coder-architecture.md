@@ -49,7 +49,7 @@ The Master Coder provides expert-level capabilities in three AutoCAD automation 
 ### Current Foundation (Preserved)
 ```
 AutoCAD MCP Server (Manufacturing)
-├── Flask HTTP Server (localhost:5000)
+├── Flask HTTP Server (localhost:5001)
 ├── MCP Protocol Implementation
 ├── Surface Unfolding Algorithms (LSCM)
 ├── Pattern Nesting Optimization

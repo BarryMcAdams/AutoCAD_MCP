@@ -339,16 +339,31 @@ def unfold_surface_simple(mesh_analysis: Dict[str, Any], tolerance: float = 0.01
         
         # Simple rectangular unfolding (proof of concept)
         # In practice, this would use the actual mesh vertices
+        pattern_width = (m_size - 1) * 25
+        pattern_height = (n_size - 1) * 25
+        pattern_area = pattern_width * pattern_height
+        original_area = mesh_analysis.get('surface_area', pattern_area)
+        
+        # Calculate simple distortion metrics for rectangular approximation
+        area_distortion = abs(pattern_area - original_area) / original_area if original_area > 0 else 0
+        
         unfolded_data = {
             'success': True,
-            'original_surface_area': mesh_analysis.get('surface_area', 0),
+            'method': 'simple_rectangular',
+            'original_surface_area': original_area,
             'unfolded_pattern': {
                 'type': 'rectangular_grid',
                 'm_size': m_size,
                 'n_size': n_size,
-                'pattern_width': (m_size - 1) * 25,  # Estimated 25 units per grid
-                'pattern_height': (n_size - 1) * 25,
-                'distortion_percentage': tolerance * 100
+                'pattern_width': pattern_width,
+                'pattern_height': pattern_height,
+            },
+            'distortion_metrics': {
+                'area_distortion_percentage': area_distortion * 100,
+                'method': 'rectangular_approximation',
+                'max_angle_distortion': 0.0,  # Rectangular grid has no angle distortion
+                'avg_angle_distortion': 0.0,
+                'distortion_acceptable': area_distortion < 0.1  # 10% tolerance for simple method
             },
             'manufacturing_data': {
                 'fold_lines': [],

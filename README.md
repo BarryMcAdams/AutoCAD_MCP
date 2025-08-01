@@ -1,13 +1,13 @@
 # AutoCAD MCP Server
 
-**A Production-Ready Manufacturing CAD Automation Platform**
+**A Development Platform for AutoCAD Automation Research**
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-3.0-green.svg)](https://flask.palletsprojects.com/)
 [![AutoCAD 2025](https://img.shields.io/badge/AutoCAD-2025-red.svg)](https://www.autodesk.com/products/autocad)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The AutoCAD MCP Server transforms AutoCAD 2025 into a powerful manufacturing automation platform, providing advanced 3D surface unfolding, automated dimensioning, and material optimization capabilities through a comprehensive REST API.
+The AutoCAD MCP Server is a research and development platform for AutoCAD 2025 automation, featuring experimental 3D surface unfolding algorithms, automated dimensioning prototypes, and material optimization research tools through a REST API.
 
 ## 🚀 Quick Start
 

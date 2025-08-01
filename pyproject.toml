@@ -34,16 +34,33 @@ fastapi = "^0.116.1"
 uvicorn = {extras = ["standard"], version = "^0.35.0"}
 python-multipart = "^0.0.20"
 mcp = "^1.0.0"
+websockets = "^12.0"
+aiofiles = "^23.2.0"
+jinja2 = "^3.1.2"
+requests = "^2.31.0"
+python-dotenv = "^1.0.0"
+cryptography = "^41.0.0"
+
+[tool.poetry.group.ml]
+optional = true
+
+[tool.poetry.group.ml.dependencies]
+scikit-learn = "^1.4.0"
+transformers = "^4.35.0"
+torch = "^2.1.0"
+accelerate = "^0.24.0"
 
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
+pytest-cov = "^4.0"
+pytest-html = "^4.0.0"
+pytest-mock = "^3.12.0"
 black = "^24.8.0"
 ruff = "^0.5.5"
 mypy = "^1.0"
 bandit = "^1.7"
 safety = "^2.0"
-pytest-cov = "^4.0"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

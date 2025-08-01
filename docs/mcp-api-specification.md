@@ -178,7 +178,7 @@ Perform boolean subtraction operation.
 ### Surface Unfolding Utility
 
 #### POST /unfold_surface
-Unfold a 3D surface to 2D pattern (SmartUnfold-like functionality).
+Unfold a 3D surface to 2D pattern using LSCM algorithm.
 
 **Request**:
 ```json

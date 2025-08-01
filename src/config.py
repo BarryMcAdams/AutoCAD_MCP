@@ -13,7 +13,7 @@ class Config:
     
     # Server configuration
     HOST: str = "localhost"
-    PORT: int = 5000
+    PORT: int = 5001
     DEBUG: bool = False
     
     # Logging configuration
@@ -37,7 +37,7 @@ class Config:
         """Create configuration from environment variables."""
         return cls(
             HOST=os.getenv('MCP_HOST', 'localhost'),
-            PORT=int(os.getenv('MCP_PORT', '5000')),
+            PORT=int(os.getenv('MCP_PORT', '5001')),
             DEBUG=os.getenv('MCP_DEBUG', 'false').lower() == 'true',
             LOG_LEVEL=os.getenv('MCP_LOG_LEVEL', 'INFO'),
             LOG_FILE=os.getenv('MCP_LOG_FILE', 'logs/mcp.log'),

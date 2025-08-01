@@ -8,7 +8,7 @@ This document specifies how the AutoCAD MCP Server integrates with Visual Studio
 ### MCP Server Role
 - **Primary Function**: Provides AutoCAD automation capabilities via HTTP API
 - **Target Client**: VS Code with Roo Code extension (not Claude desktop)
-- **Communication**: REST API over HTTP (localhost:5000)
+- **Communication**: REST API over HTTP (localhost:5001)
 - **Data Flow**: VS Code → MCP Server → AutoCAD 2025 COM API
 
 ### Integration Points
@@ -24,7 +24,7 @@ Location: `src/mcp_client.py`
 
 ```python
 class McpClient:
-    def __init__(self, host='localhost:5000'):
+    def __init__(self, host='localhost:5001'):
         self.session = requests.Session()
         self.base_url = f"http://{host}"
     
@@ -53,7 +53,7 @@ Templates for common AutoCAD operations:
 - **VS Code Version**: 1.92+
 - **Python Environment**: Use Poetry virtual environment
 - **AutoCAD**: Must be running and visible
-- **Network**: MCP server accessible on localhost:5000
+- **Network**: MCP server accessible on localhost:5001
 
 ### Workflow
 1. User describes desired AutoCAD operation in natural language
