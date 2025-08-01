@@ -9,6 +9,13 @@
 
 The AutoCAD MCP Server is a research and development platform for AutoCAD 2025 automation, featuring experimental 3D surface unfolding algorithms, automated dimensioning prototypes, and material optimization research tools through a REST API.
 
+**🚨 Current Status: Development Platform**
+- ✅ **Server Infrastructure**: Fully functional with 19+ REST endpoints
+- ✅ **Core Algorithms**: LSCM surface unfolding and pattern optimization implemented
+- ✅ **AutoCAD Integration**: COM interface with robust error handling
+- 🔬 **Research Stage**: Algorithms and features under active development
+- 📋 **Testing Required**: AutoCAD integration needs validation on target systems
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -42,6 +49,14 @@ The AutoCAD MCP Server is a research and development platform for AutoCAD 2025 a
 5. **Test the connection:**
    ```bash
    curl http://localhost:5001/health
+   # Expected response: {"status":"ok","success":true,"timestamp":"...","version":"1.0.0"}
+   ```
+
+6. **Check AutoCAD status:**
+   ```bash
+   curl http://localhost:5001/acad-status
+   # If AutoCAD is running: Connection status and version info
+   # If not running: {"error":"AutoCAD is not connected",...}
    ```
 
 ### First API Call
@@ -58,29 +73,29 @@ curl -X POST http://localhost:5001/draw/line \
 
 ## 🎯 Key Features
 
-### 🔧 Advanced Surface Unfolding
-- **LSCM Algorithm**: Least Squares Conformal Mapping with <0.1% distortion
-- **Geodesic Calculations**: Optimal fold line placement using Dijkstra algorithm
+### 🔧 Advanced Surface Unfolding (Experimental)
+- **LSCM Algorithm**: Least Squares Conformal Mapping for 3D surface parameterization
+- **Geodesic Calculations**: Research-stage fold line placement algorithms
 - **Multiple Methods**: Simple grid, advanced LSCM, and hybrid approaches
-- **Quality Validation**: Automatic distortion analysis and tolerance checking
+- **Quality Validation**: Distortion measurement and analysis tools
 
-### 📐 Automated Dimensioning
-- **Linear & Angular Dimensions**: Professional manufacturing standards
-- **Manufacturing Drawings**: Complete technical drawings with title blocks
-- **Text Annotations**: Manufacturing notes and specifications
-- **Layer Management**: Organized CAD layers for different annotation types
+### 📐 Automated Dimensioning (Prototype)
+- **Linear & Angular Dimensions**: Basic dimensioning functionality
+- **Manufacturing Drawings**: Template-based technical drawing generation
+- **Text Annotations**: Automated manufacturing notes
+- **Layer Management**: CAD layer organization tools
 
-### 📦 Pattern Optimization
-- **Material Nesting**: 85-95% utilization on standard material sheets
-- **Multiple Algorithms**: Best-fit, genetic algorithm, simulated annealing
-- **Cost Optimization**: Material cost calculation and waste minimization
-- **Standard Materials**: Steel, aluminum, stainless steel, cardboard, plywood
+### 📦 Pattern Optimization (Research)
+- **Material Nesting**: Experimental pattern placement algorithms
+- **Multiple Algorithms**: Best-fit, genetic algorithm research implementations
+- **Cost Optimization**: Material usage calculation tools
+- **Standard Materials**: Configurable material specifications
 
-### ⚡ Batch Processing
-- **High-Volume Workflows**: Process hundreds of surfaces simultaneously
-- **Full Integration**: Automatic unfolding, dimensioning, and optimization
-- **Production Scale**: Designed for manufacturing environments
-- **Error Handling**: Robust failure reporting and recovery
+### ⚡ Batch Processing (Development)
+- **Multi-Surface Processing**: Batch operation framework
+- **Workflow Integration**: Research-stage automation pipelines
+- **Scalability Testing**: Performance analysis tools
+- **Error Handling**: Comprehensive logging and recovery mechanisms
 
 ## 📚 API Documentation
 
@@ -240,21 +255,21 @@ Content-Type: application/json
 ### System Components
 
 ```
-AutoCAD MCP Server
-├── Flask REST API (25+ endpoints)
-├── AutoCAD COM Integration
-├── Advanced Algorithms
-│   ├── LSCM Surface Unfolding
-│   ├── Geodesic Path Calculation
-│   └── Pattern Optimization
-├── Manufacturing Features
-│   ├── Automated Dimensioning
-│   ├── Technical Drawing Generation
-│   └── Material Optimization
-└── Production Tools
-    ├── Batch Processing
-    ├── Quality Validation
-    └── Performance Monitoring
+AutoCAD MCP Server (Development Platform)
+├── Flask REST API (19+ endpoints) ✅ Functional
+├── AutoCAD COM Integration ✅ Implemented
+├── Research Algorithms
+│   ├── LSCM Surface Unfolding 🔬 Experimental
+│   ├── Geodesic Path Calculation 🔬 Research
+│   └── Pattern Optimization 🔬 Prototype
+├── Development Features
+│   ├── Automated Dimensioning 🚧 In Progress
+│   ├── Technical Drawing Generation 🚧 Basic
+│   └── Material Optimization 🔬 Research
+└── Testing Tools
+    ├── Batch Processing Framework 🚧 Development
+    ├── Quality Validation Tools 🔬 Experimental
+    └── Performance Monitoring ✅ Basic
 ```
 
 ### File Structure
@@ -293,19 +308,26 @@ src/
 - **PLM Systems**: Technical drawing management and versioning
 - **Manufacturing Execution**: Production workflow automation
 
-## 📊 Performance Metrics
+## 📊 Development Status & Testing
 
-### Quality Standards
-- **Distortion Tolerance**: <0.1% for LSCM surface unfolding
-- **Material Utilization**: 85-95% efficiency in pattern nesting
-- **Processing Speed**: <1 second for simple surfaces, <10 seconds for complex LSCM
-- **Scalability**: Handles meshes with thousands of triangles
+### ✅ Validated Components
+- **Server Infrastructure**: Flask server starts successfully on port 5001
+- **Health Monitoring**: `/health` endpoint returns proper JSON responses
+- **AutoCAD Detection**: `/acad-status` correctly identifies connection state
+- **Core Algorithms**: LSCM algorithm imports and loads without errors
+- **API Endpoints**: 19+ REST endpoints confirmed available and responding
 
-### Business Value
-- **Material Waste Reduction**: 10-15% through optimized nesting
-- **Design Time Savings**: 70% reduction in manual pattern development
-- **Drawing Generation**: 90% time savings in technical documentation
-- **Quality Improvement**: Significant reduction through automated validation
+### 🔬 Research Performance Targets
+- **Distortion Measurement**: LSCM algorithm includes distortion calculation
+- **Processing Goals**: <1 second for simple operations, <10 seconds for complex unfolding
+- **Scalability Research**: Testing with various mesh sizes and complexities
+- **Integration Testing**: Ongoing validation with AutoCAD 2025 instances
+
+### 🚧 Development Priorities
+- **AutoCAD Integration**: Full COM interface testing with real AutoCAD instances
+- **Algorithm Validation**: Performance benchmarking and accuracy testing
+- **User Interface**: API documentation and example implementations
+- **Production Readiness**: Comprehensive testing and stability improvements
 
 ## 🔧 Configuration
 
@@ -342,35 +364,40 @@ class Config:
     MAX_DISTORTION_THRESHOLD = 0.1
 ```
 
-## 🧪 Testing
+## 🧪 Testing & Validation
 
-### Run Tests
+### Infrastructure Testing ✅ Completed
 ```bash
-# Run all tests
-poetry run pytest
+# Test server startup and health
+poetry install
+poetry run python src/server.py
+curl http://localhost:5001/health
+# Expected: {"status":"ok","success":true,"timestamp":"...","version":"1.0.0"}
 
-# Run with coverage
-poetry run pytest --cov=src
-
-# Run specific test category
-poetry run pytest tests/test_surface_operations.py
+# Test AutoCAD connection detection
+curl http://localhost:5001/acad-status
+# Expected: Connection status or "AutoCAD is not connected" message
 ```
 
-### Manual Testing
+### Development Testing 🚧 In Progress
 ```bash
-# Test basic connectivity
-curl http://localhost:5001/health
+# Run available tests (note: some tests have import path issues)
+poetry run pytest
 
-# Test drawing operation
+# Test core algorithm loading
+python -c "from src.algorithms.lscm import LSCMSolver; print('LSCM loads successfully')"
+
+# Test drawing operations (requires AutoCAD running)
 curl -X POST http://localhost:5001/draw/line \
   -H "Content-Type: application/json" \
   -d '{"start_point": [0,0,0], "end_point": [100,100,0]}'
-
-# Test surface unfolding (requires 3D surface in AutoCAD)
-curl -X POST http://localhost:5001/surface/unfold \
-  -H "Content-Type: application/json" \
-  -d '{"entity_id": 12345, "tolerance": 0.01}'
 ```
+
+### Integration Testing 📋 Required
+- **AutoCAD 2025**: Full testing with actual AutoCAD installation
+- **Real Surfaces**: Validation with complex 3D surfaces and meshes
+- **Performance**: Benchmarking with large datasets
+- **Error Handling**: Edge case testing and recovery mechanisms
 
 ## 📖 Examples
 
@@ -570,6 +597,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**AutoCAD MCP Server** - Transforming Manufacturing CAD Workflows
+**AutoCAD MCP Server** - Research Platform for AutoCAD Automation
 
-*Made with ❤️ for the manufacturing community*
+*Development platform for CAD automation research and experimentation*
+
+## 📈 Project Status Summary
+
+**January 2025**: Initial development and infrastructure fixes  
+**August 2025**: Testing validation completed  
+- ✅ Server infrastructure functional
+- ✅ Core algorithms implemented  
+- ✅ AutoCAD COM integration working
+- 🔬 Research algorithms under development
+- 📋 Full AutoCAD integration testing required
+
+This is an active research and development project. Contributors and researchers welcome!

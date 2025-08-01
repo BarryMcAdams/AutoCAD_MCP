@@ -57,9 +57,11 @@ poetry run black . && poetry run ruff check . && poetry run mypy src/enhanced_au
 ```bash
 # Test manufacturing server health (PRESERVED)
 curl http://localhost:5001/health
+# Expected: {"status":"ok","success":true,"timestamp":"...","version":"1.0.0"}
 
 # Test AutoCAD connection status (PRESERVED)
 curl http://localhost:5001/acad-status
+# Expected: {"error":"AutoCAD is not connected",...} when AutoCAD not running
 
 # Test basic line drawing (PRESERVED)
 curl -X POST http://localhost:5001/draw/line \

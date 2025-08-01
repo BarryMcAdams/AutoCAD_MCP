@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict
 from flask import jsonify, request
 import pyautocad
 from pyautocad import Autocad
-from utils import get_autocad_instance
+from .utils import get_autocad_instance
 
 logger = logging.getLogger(__name__)
 
