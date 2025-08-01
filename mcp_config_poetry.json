@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "autocad-mcp": {
+      "command": "poetry",
+      "args": ["run", "python", "src/mcp_server.py"],
+      "cwd": "C:/Users/AdamsLaptop/source/repos/AutoCAD_MCP",
+      "env": {
+        "PYTHONPATH": "src"
+      }
+    }
+  }
+}

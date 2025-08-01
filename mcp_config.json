@@ -1,9 +1,11 @@
 {
+  "_comment": "UV-based configuration (requires UV package manager)",
+  "_alternatives": "See mcp_config_poetry.json or mcp_config_python.json for other options",
   "mcpServers": {
     "autocad-mcp": {
       "command": "uv",
       "args": ["run", "python", "src/mcp_server.py"],
-      "cwd": "C:/Users/barrya/source/repos/AutoCAD_MCP",
+      "cwd": "C:/Users/AdamsLaptop/source/repos/AutoCAD_MCP",
       "env": {
         "PYTHONPATH": "src"
       }

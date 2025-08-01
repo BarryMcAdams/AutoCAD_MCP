@@ -10,7 +10,8 @@
   <img src="https://img.shields.io/badge/Python-3.12+-blue.svg" alt="Python Version">
   <img src="https://img.shields.io/badge/AutoCAD-2021--2025-orange.svg" alt="AutoCAD Version">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg" alt="Status">
+  <img src="https://img.shields.io/badge/Status-Development-yellow.svg" alt="Status">
+  <img src="https://img.shields.io/badge/Platform-Windows%20Required-red.svg" alt="Platform">
 </p>
 
 ---
@@ -38,6 +39,19 @@ Built with **Python 3.12** and leveraging **Flask 3.0**, this mcp server was mad
 | 🏢 **Enterprise Ready** | Built for professional teams with features like multi-user collaboration, security monitoring, and deployment automation. |
 | 🛠️ **Developer Tools** | A comprehensive development framework with a mock AutoCAD system for offline testing, performance benchmarking, and CI/CD integration. |
 
+## 🔧 Requirements
+
+### System Requirements
+- **Windows 10/11** (Required for AutoCAD COM integration)
+- **AutoCAD 2021-2025** installed and licensed
+- **Python 3.12+**
+- **Poetry** or **UV** package manager (recommended)
+
+### Development Environment
+- This project can be developed on Linux/WSL2 for code editing and testing
+- Full functionality requires Windows deployment for AutoCAD integration
+- Cross-platform testing uses mock implementations for Windows-only components
+
 ## 🚀 Getting Started
 
 We have two main guides to help you get started, depending on your background:
@@ -59,11 +73,36 @@ If you're a developer who wants to build on top of the AutoCAD MCP Server, you c
     ```
 
 2.  **Install dependencies:**
+    
+    **Option A: Using Poetry (Recommended)**
     ```bash
-    pip install -r requirements.txt
+    poetry install
+    ```
+    
+    **Option B: Using UV**
+    ```bash
+    uv sync
+    ```
+    
+    **Option C: Using pip** 
+    ```bash
+    # First generate requirements.txt from pyproject.toml
+    pip install -e .
     ```
 
 3.  **Run the server:**
+    
+    **With Poetry:**
+    ```bash
+    poetry run python src/mcp_server.py
+    ```
+    
+    **With UV:**
+    ```bash
+    uv run python src/mcp_server.py
+    ```
+    
+    **Direct Python:**
     ```bash
     python src/mcp_server.py
     ```
