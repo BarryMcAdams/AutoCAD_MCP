@@ -22,44 +22,103 @@ The AutoCAD MCP Server is a research and development platform for AutoCAD 2025 a
 - **AutoCAD 2025** (full version) installed and activated
 - **Python 3.12** or higher
 - **Windows OS** (required for AutoCAD COM interface)
-- **Poetry** for dependency management
+- **Poetry** or **uv** for dependency management
 
-### Installation
+### Installation Options
 
-1. **Clone the repository:**
+#### Option 1: Claude Desktop Integration (Recommended)
+
+This project can be integrated with Claude Desktop as a Model Context Protocol (MCP) server for AI-assisted AutoCAD automation.
+
+**Claude Desktop Setup:**
+
+1. **Install from gitmcp.io (easiest method):**
+   - Visit [gitmcp.io/BarryMcAdams/AutoCAD_MCP](https://gitmcp.io/BarryMcAdams/AutoCAD_MCP)
+   - Follow the installation instructions provided
+
+2. **Manual Installation:**
+   ```bash
+   # Clone the repository
+   git clone https://github.com/BarryMcAdams/AutoCAD_MCP.git
+   cd AutoCAD_MCP
+   
+   # Install dependencies
+   uv sync  # or: poetry install
+   
+   # Test MCP server
+   uv run python src/server.py  # or: poetry run python src/server.py
+   ```
+
+3. **Configure Claude Desktop:**
+   
+   Add to your Claude Desktop MCP configuration:
+   ```json
+   {
+     "mcpServers": {
+       "autocad-mcp": {
+         "command": "uv",
+         "args": ["run", "python", "src/server.py"],
+         "cwd": "C:\\path\\to\\your\\AutoCAD_MCP",
+         "env": {
+           "PYTHONPATH": "src",
+           "PYTHONIOENCODING": "utf-8"
+         }
+       }
+     }
+   }
+   ```
+
+4. **Start AutoCAD 2025:**
+   - Launch AutoCAD 2025
+   - Open or create a drawing
+   - Start a new Claude Desktop conversation
+
+5. **Test MCP Integration:**
+   Ask Claude: *"Check the status of the AutoCAD MCP server and draw a line from origin to point (100, 100, 0)"*
+
+#### Option 2: Standalone REST API Server
+
+1. **Clone and install:**
    ```bash
    git clone https://github.com/BarryMcAdams/AutoCAD_MCP.git
    cd AutoCAD_MCP
-   ```
-
-2. **Install dependencies:**
-   ```bash
    poetry install
    ```
 
-3. **Start AutoCAD 2025:**
+2. **Start AutoCAD 2025:**
    - Launch AutoCAD 2025
    - Open or create a drawing with 3D surfaces
 
-4. **Run the server:**
+3. **Run the Flask server:**
    ```bash
-   poetry run python src/server.py
+   poetry run python src/mcp_server.py  # For REST API mode
    ```
 
-5. **Test the connection:**
+4. **Test the connection:**
    ```bash
    curl http://localhost:5001/health
    # Expected response: {"status":"ok","success":true,"timestamp":"...","version":"1.0.0"}
    ```
 
-6. **Check AutoCAD status:**
-   ```bash
-   curl http://localhost:5001/acad-status
-   # If AutoCAD is running: Connection status and version info
-   # If not running: {"error":"AutoCAD is not connected",...}
-   ```
+### Available MCP Tools (Claude Desktop)
 
-### First API Call
+When integrated with Claude Desktop, the following AutoCAD tools are available for natural language interaction:
+
+- **draw_line** - Draw lines between 3D points
+- **draw_circle** - Create circles with center and radius
+- **extrude_profile** - Create 3D solids by extruding 2D profiles
+- **revolve_profile** - Create 3D solids by revolving profiles around axes
+- **list_entities** - List all entities in the current AutoCAD drawing
+- **get_entity_info** - Get detailed information about specific entities
+- **server_status** - Check MCP server and AutoCAD connection status
+
+**Example MCP Commands:**
+- *"Draw a line from origin to (100, 100, 0)"*
+- *"Create a circle at (50, 50, 0) with radius 25"*  
+- *"List all entities in the current drawing"*
+- *"Check if the MCP server is connected to AutoCAD"*
+
+### First API Call (REST Mode)
 
 Create a simple line in AutoCAD:
 ```bash
