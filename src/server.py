@@ -30,6 +30,7 @@ logger = logging.getLogger("autocad-mcp")
 # Import our MCP tools and utilities
 try:
     from src.utils import get_autocad_instance, validate_point3d, extract_entity_properties
+    from src.algorithms.lscm import unfold_surface_lscm
 except ImportError as e:
     logger.error(f"Failed to import AutoCAD modules: {e}")
     # Continue with basic functionality if advanced modules aren't available
@@ -179,6 +180,55 @@ async def handle_list_tools() -> list[types.Tool]:
                 "properties": {},
                 "additionalProperties": False
             }
+        ),
+        types.Tool(
+            name="unfold_surface_lscm",
+            description="Advanced 3D surface unfolding using LSCM algorithm with minimal distortion for manufacturing",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "vertices": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 3,
+                            "maxItems": 3
+                        },
+                        "description": "Array of 3D vertex coordinates [[x1,y1,z1], [x2,y2,z2], ...]",
+                        "minItems": 3
+                    },
+                    "triangles": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "integer", "minimum": 0},
+                            "minItems": 3,
+                            "maxItems": 3
+                        },
+                        "description": "Array of triangle vertex indices [[i1,j1,k1], [i2,j2,k2], ...]",
+                        "minItems": 1
+                    },
+                    "boundary_constraints": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 3,
+                            "maxItems": 3
+                        },
+                        "description": "Optional boundary vertex constraints [[vertex_index, u_coord, v_coord], ...]",
+                        "required": false
+                    },
+                    "tolerance": {
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 0.001,
+                        "description": "Distortion tolerance for manufacturing validation"
+                    }
+                },
+                "required": ["vertices", "triangles"]
+            }
         )
     ]
 
@@ -209,6 +259,13 @@ async def handle_call_tool(name: str, arguments: dict[str, Any] | None) -> list[
             result = await _get_entity_info(arguments["entity_id"])
         elif name == "server_status":
             result = await _server_status()
+        elif name == "unfold_surface_lscm":
+            result = await _unfold_surface_lscm(
+                arguments["vertices"],
+                arguments["triangles"],
+                arguments.get("boundary_constraints"),
+                arguments.get("tolerance", 0.001)
+            )
         else:
             result = json.dumps({
                 "success": False,
@@ -409,6 +466,63 @@ async def _get_entity_info(entity_id: int) -> str:
         })
 
 
+async def _unfold_surface_lscm(
+    vertices: list[list[float]], 
+    triangles: list[list[int]], 
+    boundary_constraints: list[list[float]] = None,
+    tolerance: float = 0.001
+) -> str:
+    """Advanced 3D surface unfolding using LSCM algorithm."""
+    try:
+        import numpy as np
+        logger.info(f"Starting LSCM surface unfolding: {len(vertices)} vertices, {len(triangles)} triangles")
+        
+        # Convert input data to numpy arrays
+        vertices_array = np.array(vertices, dtype=np.float64)
+        triangles_array = np.array(triangles, dtype=np.int32)
+        
+        # Convert boundary constraints if provided
+        boundary_constraints_converted = None
+        if boundary_constraints:
+            boundary_constraints_converted = [(int(bc[0]), float(bc[1]), float(bc[2])) for bc in boundary_constraints]
+        
+        # Execute LSCM algorithm
+        result = unfold_surface_lscm(
+            vertices_array, 
+            triangles_array, 
+            boundary_constraints_converted,
+            tolerance
+        )
+        
+        # Add algorithm metadata
+        result["algorithm"] = "LSCM (Least Squares Conformal Mapping)"
+        result["input_mesh"] = {
+            "vertices_count": len(vertices),
+            "triangles_count": len(triangles),
+            "boundary_constraints": len(boundary_constraints) if boundary_constraints else 0
+        }
+        result["performance"] = {
+            "tolerance": tolerance,
+            "processing_method": "Advanced mathematical algorithm with research-grade accuracy"
+        }
+        
+        logger.info(f"LSCM unfolding completed: success={result['success']}")
+        return json.dumps(result, indent=2)
+        
+    except Exception as e:
+        logger.error(f"Error in LSCM surface unfolding: {e}")
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "algorithm": "LSCM (Least Squares Conformal Mapping)",
+            "message": "Failed to unfold surface using LSCM algorithm",
+            "input_mesh": {
+                "vertices_count": len(vertices) if vertices else 0,
+                "triangles_count": len(triangles) if triangles else 0
+            }
+        })
+
+
 async def _server_status() -> str:
     """Get MCP server and AutoCAD connection status."""
     try:
@@ -420,7 +534,9 @@ async def _server_status() -> str:
             "mcp_server": "running",
             "autocad_connected": True,
             "active_document": doc_name,
-            "tools_available": 7,
+            "tools_available": 8,
+            "tools_advanced": 1,
+            "advanced_algorithms": ["LSCM Surface Unfolding"],
             "transport": "stdio",
             "message": "MCP server is operational and connected to AutoCAD via Claude Desktop",
         })
@@ -431,6 +547,8 @@ async def _server_status() -> str:
             "error": str(e),
             "mcp_server": "running", 
             "autocad_connected": False,
+            "tools_available": 8,
+            "tools_advanced": 1,
             "transport": "stdio",
             "message": "MCP server running but AutoCAD connection failed"
         })
@@ -485,7 +603,7 @@ async def handle_get_prompt(name: str, arguments: dict[str, str] | None) -> type
         help_content = f"""
 # AutoCAD MCP Server Help
 
-## Available Tools:
+## Basic Drawing Tools:
 1. **draw_line** - Draw a line between two 3D points
 2. **draw_circle** - Draw a circle with center and radius  
 3. **extrude_profile** - Create 3D solid by extruding 2D profile
@@ -494,10 +612,22 @@ async def handle_get_prompt(name: str, arguments: dict[str, str] | None) -> type
 6. **get_entity_info** - Get detailed info about specific entity
 7. **server_status** - Check server and AutoCAD connection
 
+## Advanced Algorithmic Tools:
+8. **unfold_surface_lscm** - Advanced 3D surface unfolding using LSCM algorithm with minimal distortion for manufacturing
+
 ## Usage Examples:
+### Basic Drawing:
 - Draw line: `draw_line(start_point=[0,0,0], end_point=[10,10,0])`
 - Draw circle: `draw_circle(center=[5,5,0], radius=2.5)`
 - Extrude: `extrude_profile(profile_points=[[0,0],[10,0],[10,10],[0,10]], extrude_height=5)`
+
+### Advanced Surface Processing:
+- LSCM Unfolding: `unfold_surface_lscm(vertices=[[0,0,0],[1,0,0],[0.5,1,0]], triangles=[[0,1,2]], tolerance=0.001)`
+
+## Advanced Features:
+- **LSCM Algorithm**: Research-grade surface unfolding with manufacturing validation
+- **Distortion Analysis**: Comprehensive angle and area distortion metrics
+- **Manufacturing Data**: Recommended material sizes and acceptability thresholds
 
 ## Requirements:
 - AutoCAD 2025 must be running
