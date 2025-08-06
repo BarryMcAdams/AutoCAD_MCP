@@ -16,8 +16,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Scientific/Engineering :: Computer Aided Design (CAD)"
+    "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
 [tool.poetry]
