@@ -78,3 +78,15 @@ quick_test.py
 Sessions/
 Claude_*.md
 CLAUDE_*.md
+
+# Development documentation (hidden from GitHub)
+CLAUDE.md
+PHASE*.md
+WEEK*.md
+QUALITY*.md
+CONTRIBUTING.md
+HANDOFF*.md
+mcp_config.json
+
+# Development examples
+NewSpiral/
