@@ -209,17 +209,8 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": "Array of triangle vertex indices [[i1,j1,k1], [i2,j2,k2], ...]",
                         "minItems": 1
                     },
-                    "boundary_constraints": {
-                        "type": "array",
-                        "items": {
-                            "type": "array",
-                            "items": {"type": "number"},
-                            "minItems": 3,
-                            "maxItems": 3
-                        },
-                        "description": "Optional boundary vertex constraints [[vertex_index, u_coord, v_coord], ...]",
-                        "required": false
-                    },
+                    "description": "Optional boundary vertex constraints [[vertex_index, u_coord, v_coord], ...]",
+                            "required": False,
                     "tolerance": {
                         "type": "number",
                         "minimum": 0,
