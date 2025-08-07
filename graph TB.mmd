@@ -1,0 +1,39 @@
+graph TB
+    subgraph "Client Layer"
+        A[Claude Desktop] --> B[MCP Client]
+        C[VS Code Extension] --> B
+        D[Web Interface] --> B
+    end
+    
+    subgraph "MCP Protocol Layer"
+        B --> E[MCP Server - stdio transport]
+        E --> F[Tool Registry]
+        E --> G[Resource Manager]
+        E --> H[Prompt System]
+    end
+    
+    subgraph "Application Layer"
+        F --> I[Basic Tools]
+        F --> J[Advanced Algorithms]
+        F --> K[Code Generation]
+        F --> L[Interactive Tools]
+        
+        I --> M[AutoCAD COM Interface]
+        J --> N[Mathematical Engines]
+        K --> O[Language Processors]
+        L --> P[Development Environment]
+    end
+    
+    subgraph "Data Layer"
+        M --> Q[AutoCAD Application]
+        N --> R[Scientific Libraries]
+        O --> S[Template Systems]
+        P --> T[Session Management]
+    end
+    
+    subgraph "Infrastructure Layer"
+        Q --> U[Windows COM]
+        R --> V[NumPy/SciPy]
+        S --> W[File System]
+        T --> X[Database/Cache]
+    end
