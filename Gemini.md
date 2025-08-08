@@ -19,3 +19,28 @@ NEVER proactively create documentation files (*.md) or README files. Only create
 - Do not delete the DELETED/ folder itself
 - The DELETED/ folder is in .gitignore so GitHub stays clean and organized
 - This preserves all historical content while maintaining a tidy repository structure
+
+## 🔍 Project Tracking
+
+### Mandatory Project Tracking Procedure
+
+**IMPORTANT**: For ALL work in this project:
+
+1. ALWAYS update the `PROJECT_TRACKER.md` file after completing any task
+2. Follow the comprehensive tracking guidelines in the file
+3. Use status emojis: 🔴 (PENDING), 🟡 (IN_PROGRESS), 🟢 (COMPLETED)
+4. Include:
+   - Brief work description
+   - Lines of code added/modified
+   - Any new dependencies
+
+### Reference Documents
+- [PROJECT_TRACKER.md](/PROJECT_TRACKER.md): Comprehensive project tracking document
+- [Improvements/Research_Planning.md](/Improvements/Research_Planning.md): Research strategy
+- [Improvements/Improvements_Overview.md](/Improvements/Improvements_Overview.md): Project vision
+
+## 🚨 Critical Tracking Rules
+- Never delete existing project tracker content
+- Always append updates
+- Include timestamp with significant changes
+- Update version number incrementally
