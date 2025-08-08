@@ -1,11 +1,49 @@
 import os
 import json
 from datetime import datetime
+from pathlib import Path
 
 class HandoffCommand:
     def __init__(self, project_root=None):
-        self.project_root = project_root or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.project_root = project_root or self._find_project_root()
         self.timestamp = datetime.now().isoformat()
+    
+    def _find_project_root(self) -> str:
+        """
+        Portable project root detection that works across different machines and paths.
+        Walks up the directory tree looking for project markers.
+        """
+        # Start from the current script location
+        current_path = Path(__file__).resolve().parent
+        
+        # Project marker files that indicate we've found the root
+        project_markers = [
+            '.git',           # Git repository
+            'CLAUDE.md',      # Project guidelines
+            'PROJECT_TRACKER.md',  # Project tracker
+            'pyproject.toml', # Python project file
+            'package.json',   # Node.js project
+            'requirements.txt', # Python requirements
+            'src'             # Source directory
+        ]
+        
+        # Walk up the directory tree
+        max_levels = 10  # Prevent infinite loops
+        for _ in range(max_levels):
+            # Check if any project markers exist in current directory
+            for marker in project_markers:
+                marker_path = current_path / marker
+                if marker_path.exists():
+                    return str(current_path)
+            
+            # Move up one level
+            parent = current_path.parent
+            if parent == current_path:  # Reached filesystem root
+                break
+            current_path = parent
+        
+        # Fallback: use current working directory
+        return os.getcwd()
 
     def update_session_handoff(self):
         """Update session_handoff.md with comprehensive context."""
@@ -121,7 +159,7 @@ class HandoffCommand:
         """Get the current project tracker version."""
         tracker_path = os.path.join(self.project_root, 'PROJECT_TRACKER.md')
         try:
-            with open(tracker_path, 'r') as f:
+            with open(tracker_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     if line.startswith('*Project Tracking Version*:'):
                         return line.split(':')[-1].strip()
