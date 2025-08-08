@@ -404,8 +404,10 @@ class EnhancedMCPServer:
             """
             try:
                 # Security validation
-                if not self.security_manager.validate_python_code(code):
-                    raise McpError("SECURITY_ERROR", "Code contains potentially unsafe operations")
+                is_safe, violations = self.security_manager.validate_python_code(code)
+                if not is_safe:
+                    violation_msg = "; ".join(violations)
+                    raise McpError("SECURITY_ERROR", f"Code contains potentially unsafe operations: {violation_msg}")
 
                 # Get or create session context
                 context = self.context_manager.get_session_context(session_id)

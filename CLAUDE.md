@@ -8,7 +8,7 @@
 
 1. **Review Session Context** - Always read `session_handoff.md` to understand previous session status, completed work, and pending tasks
 2. **Review Project Documentation** - Examine the latest documentation in the project folder for a general overview of the codebase and current state
-3. **Never add developer or authorship credits** to anything you write
+3. **NEVER ADD AUTHORSHIP CREDITS** - Do NOT add any authorship credits anywhere. Remove them when you see them. Credits will be assigned upon production release.
 
 ## 🔍 Project Tracking
 
