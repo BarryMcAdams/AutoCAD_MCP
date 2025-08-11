@@ -1,485 +1,363 @@
 """
-Unit tests for basic drawing operations.
+Unit tests for MCP drawing operations.
+
+Tests the actual MCP protocol implementation rather than Flask REST endpoints.
+Focuses on the MCP tool handlers and their integration with AutoCAD.
 """
 
 import pytest
 import json
-from unittest.mock import Mock, patch, MagicMock
-from src.server import app
+from unittest.mock import Mock, patch, AsyncMock
+import asyncio
+
+# Import MCP server components
+from src.server import _draw_line, _draw_circle, _list_entities, _get_entity_info, _server_status
 
 
 @pytest.fixture
-def client():
-    """Create a test client for the Flask app."""
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
-
-
-@pytest.fixture  
 def mock_autocad():
-    """Mock AutoCAD instance for testing."""
-    with patch('pyautocad.Autocad') as mock_autocad_class, \
-         patch('src.utils.get_autocad_instance') as mock_get_acad:
-        
+    """Mock AutoCAD instance for MCP testing."""
+    with patch('src.utils.get_autocad_instance') as mock_get_acad:
         # Mock the AutoCAD instance with all necessary properties
         mock_acad = Mock()
         mock_acad.model = Mock()
-        mock_acad.doc = Mock()
-        mock_acad.doc.Name = "Test Drawing"
+        mock_acad.ActiveDocument = Mock()
+        mock_acad.ActiveDocument.Name = "Test Drawing"
         mock_acad.Visible = True
-        mock_acad.app = Mock()
-        mock_acad.app.Version = "2025.0"
         
-        # Make both the class and get_autocad_instance return our mock
-        mock_autocad_class.return_value = mock_acad
+        # Mock modelspace iteration for entity listing
+        mock_acad.model.modelspace = []
+        
         mock_get_acad.return_value = mock_acad
-        
         yield mock_acad
 
 
 class TestDrawLine:
-    """Test cases for /draw/line endpoint."""
+    """Test cases for MCP draw_line tool."""
     
-    def test_draw_line_success(self, client, mock_autocad):
-        """Test successful line creation."""
+    @pytest.mark.asyncio
+    async def test_draw_line_success(self, mock_autocad):
+        """Test successful line creation via MCP."""
+        # Setup mock
+        mock_line = Mock()
+        mock_line.ObjectID = 12345
+        mock_autocad.model.AddLine.return_value = mock_line
+        
+        # Test MCP tool call
+        result_json = await _draw_line([0, 0, 0], [100, 100, 0])
+        result = json.loads(result_json)
+        
+        assert result['success'] is True
+        assert result['entity_id'] == 12345
+        assert result['start_point'] == [0, 0, 0]
+        assert result['end_point'] == [100, 100, 0]
+        assert 'message' in result
+        
+        # Verify AutoCAD was called correctly
+        mock_autocad.model.AddLine.assert_called_once_with([0, 0, 0], [100, 100, 0])
+    
+    @pytest.mark.asyncio
+    async def test_draw_line_invalid_point(self):
+        """Test line creation with invalid point format."""
+        with patch('src.utils.validate_point3d') as mock_validate:
+            mock_validate.side_effect = ValueError("Invalid point format")
+            
+            result_json = await _draw_line([0, 0], [100, 100, 0])  # Invalid 2D point
+            result = json.loads(result_json)
+            
+            assert result['success'] is False
+            assert 'error' in result
+            assert 'Invalid point format' in result['error']
+    
+    @pytest.mark.asyncio
+    async def test_draw_line_autocad_error(self):
+        """Test line creation when AutoCAD connection fails."""
+        with patch('src.utils.get_autocad_instance') as mock_get_acad:
+            mock_get_acad.side_effect = ConnectionError("AutoCAD not running")
+            
+            result_json = await _draw_line([0, 0, 0], [100, 100, 0])
+            result = json.loads(result_json)
+            
+            assert result['success'] is False
+            assert 'AutoCAD not running' in result['error']
+
+
+class TestDrawCircle:
+    """Test cases for MCP draw_circle tool."""
+    
+    @pytest.mark.asyncio
+    async def test_draw_circle_success(self, mock_autocad):
+        """Test successful circle creation via MCP."""
+        # Setup mock
+        mock_circle = Mock()
+        mock_circle.ObjectID = 12346
+        mock_autocad.model.AddCircle.return_value = mock_circle
+        
+        # Test MCP tool call
+        result_json = await _draw_circle([50, 50, 0], 25.0)
+        result = json.loads(result_json)
+        
+        assert result['success'] is True
+        assert result['entity_id'] == 12346
+        assert result['center'] == [50, 50, 0]
+        assert result['radius'] == 25.0
+        assert 'message' in result
+        
+        # Verify AutoCAD was called correctly
+        mock_autocad.model.AddCircle.assert_called_once_with([50, 50, 0], 25.0)
+    
+    @pytest.mark.asyncio
+    async def test_draw_circle_negative_radius(self, mock_autocad):
+        """Test circle creation with negative radius."""
+        mock_autocad.model.AddCircle.side_effect = Exception("Invalid radius")
+        
+        result_json = await _draw_circle([0, 0, 0], -10.0)
+        result = json.loads(result_json)
+        
+        assert result['success'] is False
+        assert 'error' in result
+    
+    @pytest.mark.asyncio
+    async def test_draw_circle_invalid_center(self):
+        """Test circle creation with invalid center point."""
+        with patch('src.utils.validate_point3d') as mock_validate:
+            mock_validate.side_effect = ValueError("Invalid center point")
+            
+            result_json = await _draw_circle([0, 0], 10.0)  # Invalid 2D point
+            result = json.loads(result_json)
+            
+            assert result['success'] is False
+            assert 'Invalid center point' in result['error']
+
+
+class TestListEntities:
+    """Test cases for MCP list_entities tool."""
+    
+    @pytest.mark.asyncio
+    async def test_list_entities_success(self, mock_autocad):
+        """Test successful entity listing via MCP."""
+        # Setup mock entities
+        mock_entity1 = Mock()
+        mock_entity1.ObjectID = 1001
+        mock_entity1.ObjectName = "AcDbLine"
+        mock_entity1.Layer = "0"
+        mock_entity1.Length = 100.0
+        
+        mock_entity2 = Mock()
+        mock_entity2.ObjectID = 1002
+        mock_entity2.ObjectName = "AcDbCircle"
+        mock_entity2.Layer = "CIRCLES"
+        mock_entity2.Area = 78.54
+        
+        mock_autocad.model.modelspace = [mock_entity1, mock_entity2]
+        
+        # Test MCP tool call
+        result_json = await _list_entities()
+        result = json.loads(result_json)
+        
+        assert result['success'] is True
+        assert result['count'] == 2
+        assert len(result['entities']) == 2
+        
+        # Verify entity information
+        entities = result['entities']
+        assert entities[0]['id'] == 1001
+        assert entities[0]['type'] == "AcDbLine"
+        assert entities[0]['layer'] == "0"
+        assert 'length' in entities[0]
+        
+        assert entities[1]['id'] == 1002
+        assert entities[1]['type'] == "AcDbCircle"
+        assert entities[1]['layer'] == "CIRCLES"
+        assert 'area' in entities[1]
+    
+    @pytest.mark.asyncio
+    async def test_list_entities_empty(self, mock_autocad):
+        """Test entity listing with no entities."""
+        mock_autocad.model.modelspace = []
+        
+        result_json = await _list_entities()
+        result = json.loads(result_json)
+        
+        assert result['success'] is True
+        assert result['count'] == 0
+        assert result['entities'] == []
+    
+    @pytest.mark.asyncio
+    async def test_list_entities_autocad_error(self):
+        """Test entity listing when AutoCAD connection fails."""
+        with patch('src.utils.get_autocad_instance') as mock_get_acad:
+            mock_get_acad.side_effect = Exception("AutoCAD connection lost")
+            
+            result_json = await _list_entities()
+            result = json.loads(result_json)
+            
+            assert result['success'] is False
+            assert 'AutoCAD connection lost' in result['error']
+
+
+class TestGetEntityInfo:
+    """Test cases for MCP get_entity_info tool."""
+    
+    @pytest.mark.asyncio
+    async def test_get_entity_info_success(self, mock_autocad):
+        """Test successful entity info retrieval via MCP."""
+        # Setup mock entity
+        mock_entity = Mock()
+        mock_entity.ObjectID = 12345
+        mock_entity.ObjectName = "AcDbLine"
+        mock_entity.Layer = "0"
+        mock_entity.StartPoint = (0, 0, 0)
+        mock_entity.EndPoint = (100, 100, 0)
+        mock_entity.Length = 141.42
+        
+        mock_autocad.model.modelspace = [mock_entity]
+        
+        with patch('src.utils.extract_entity_properties') as mock_extract:
+            mock_extract.return_value = {
+                "id": 12345,
+                "type": "AcDbLine", 
+                "layer": "0",
+                "start_point": [0, 0, 0],
+                "end_point": [100, 100, 0],
+                "length": 141.42
+            }
+            
+            # Test MCP tool call
+            result_json = await _get_entity_info(12345)
+            result = json.loads(result_json)
+            
+            assert result['success'] is True
+            assert result['entity']['id'] == 12345
+            assert result['entity']['type'] == "AcDbLine"
+            assert result['entity']['layer'] == "0"
+    
+    @pytest.mark.asyncio
+    async def test_get_entity_info_not_found(self, mock_autocad):
+        """Test entity info retrieval for non-existent entity."""
+        mock_autocad.model.modelspace = []
+        
+        result_json = await _get_entity_info(99999)
+        result = json.loads(result_json)
+        
+        assert result['success'] is False
+        assert 'Entity not found' in result['error']
+        assert result['message'] == "No entity found with ID 99999"
+
+
+class TestServerStatus:
+    """Test cases for MCP server_status tool."""
+    
+    @pytest.mark.asyncio
+    async def test_server_status_success(self, mock_autocad):
+        """Test successful server status retrieval via MCP."""
+        mock_autocad.ActiveDocument.Name = "Test Drawing.dwg"
+        
+        result_json = await _server_status()
+        result = json.loads(result_json)
+        
+        assert result['success'] is True
+        assert result['mcp_server'] == "running"
+        assert result['autocad_connected'] is True
+        assert result['active_document'] == "Test Drawing.dwg"
+        assert result['tools_available'] == 8
+        assert result['tools_advanced'] == 1
+        assert 'LSCM Surface Unfolding' in result['advanced_algorithms']
+        assert result['transport'] == "stdio"
+    
+    @pytest.mark.asyncio
+    async def test_server_status_autocad_disconnected(self):
+        """Test server status when AutoCAD is disconnected."""
+        with patch('src.utils.get_autocad_instance') as mock_get_acad:
+            mock_get_acad.side_effect = Exception("AutoCAD not available")
+            
+            result_json = await _server_status()
+            result = json.loads(result_json)
+            
+            assert result['success'] is False
+            assert result['mcp_server'] == "running"
+            assert result['autocad_connected'] is False
+            assert 'AutoCAD not available' in result['error']
+            assert "AutoCAD connection failed" in result['message']
+
+
+class TestMCPToolsIntegration:
+    """Integration tests for MCP tools working together."""
+    
+    @pytest.mark.asyncio
+    async def test_draw_and_list_workflow(self, mock_autocad):
+        """Test drawing entities and then listing them via MCP."""
+        # Setup mock entities
+        mock_line = Mock()
+        mock_line.ObjectID = 1001
+        mock_line.ObjectName = "AcDbLine"
+        mock_line.Layer = "0"
+        mock_line.Length = 100.0
+        
+        mock_circle = Mock()
+        mock_circle.ObjectID = 1002
+        mock_circle.ObjectName = "AcDbCircle"
+        mock_circle.Layer = "0"
+        mock_circle.Area = 78.54
+        
+        # Mock drawing operations
+        mock_autocad.model.AddLine.return_value = mock_line
+        mock_autocad.model.AddCircle.return_value = mock_circle
+        mock_autocad.model.modelspace = [mock_line, mock_circle]
+        
+        # Draw line
+        line_result = await _draw_line([0, 0, 0], [100, 0, 0])
+        line_data = json.loads(line_result)
+        assert line_data['success'] is True
+        
+        # Draw circle
+        circle_result = await _draw_circle([50, 50, 0], 25.0)
+        circle_data = json.loads(circle_result)
+        assert circle_data['success'] is True
+        
+        # List entities
+        list_result = await _list_entities()
+        list_data = json.loads(list_result)
+        assert list_data['success'] is True
+        assert list_data['count'] == 2
+        assert list_data['entities'][0]['type'] == "AcDbLine"
+        assert list_data['entities'][1]['type'] == "AcDbCircle"
+    
+    @pytest.mark.asyncio
+    async def test_get_entity_after_draw(self, mock_autocad):
+        """Test drawing an entity and then retrieving its info via MCP."""
         # Setup mock
         mock_line = Mock()
         mock_line.ObjectID = 12345
         mock_line.ObjectName = "AcDbLine"
         mock_line.Layer = "0"
-        mock_line.Length = 141.42
+        
         mock_autocad.model.AddLine.return_value = mock_line
+        mock_autocad.model.modelspace = [mock_line]
         
-        # Test data
-        data = {
-            'start_point': [0, 0, 0],
-            'end_point': [100, 100, 0],
-            'layer': '0'
-        }
-        
-        response = client.post('/draw/line', 
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 200
-        response_data = response.get_json()
-        
-        assert response_data['success'] is True
-        assert response_data['entity_id'] == 12345
-        assert response_data['entity_type'] == "AcDbLine"
-        assert response_data['layer'] == "0"
-        assert response_data['start_point'] == [0, 0, 0]
-        assert response_data['end_point'] == [100, 100, 0]
-        assert 'execution_time' in response_data
-        
-        # Verify AutoCAD was called correctly
-        mock_autocad.model.AddLine.assert_called_once_with([0, 0, 0], [100, 100, 0])
-        assert mock_line.Layer == "0"
+        with patch('src.utils.extract_entity_properties') as mock_extract:
+            mock_extract.return_value = {
+                "id": 12345,
+                "type": "AcDbLine",
+                "layer": "0"
+            }
+            
+            # Draw line
+            line_result = await _draw_line([0, 0, 0], [100, 0, 0])
+            line_data = json.loads(line_result)
+            assert line_data['success'] is True
+            entity_id = line_data['entity_id']
+            
+            # Get entity info
+            info_result = await _get_entity_info(entity_id)
+            info_data = json.loads(info_result)
+            assert info_data['success'] is True
+            assert info_data['entity']['id'] == entity_id
+            assert info_data['entity']['type'] == "AcDbLine"
     
-    def test_draw_line_missing_fields(self, client):
-        """Test line creation with missing required fields."""
-        data = {'start_point': [0, 0, 0]}  # Missing end_point
-        
-        response = client.post('/draw/line',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'MISSING_REQUIRED_FIELDS'
-        assert 'end_point' in response_data['error']
-    
-    def test_draw_line_invalid_point(self, client):
-        """Test line creation with invalid point format."""
-        data = {
-            'start_point': [0, 0],  # Missing Z coordinate
-            'end_point': [100, 100, 0]
-        }
-        
-        response = client.post('/draw/line',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'INVALID_PARAMETERS'
-    
-    def test_draw_line_invalid_json(self, client):
-        """Test line creation with invalid JSON."""
-        response = client.post('/draw/line',
-                             data='invalid json',
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'INVALID_CONTENT_TYPE'
-    
-    @patch('src.utils.get_autocad_instance')
-    def test_draw_line_autocad_error(self, mock_get_acad, client):
-        """Test line creation when AutoCAD connection fails."""
-        mock_get_acad.side_effect = ConnectionError("AutoCAD not running")
-        
-        data = {
-            'start_point': [0, 0, 0],
-            'end_point': [100, 100, 0]
-        }
-        
-        response = client.post('/draw/line',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 503
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'AUTOCAD_NOT_CONNECTED'
-
-
-class TestDrawCircle:
-    """Test cases for /draw/circle endpoint."""
-    
-    def test_draw_circle_success(self, client, mock_autocad):
-        """Test successful circle creation."""
-        # Setup mock
-        mock_circle = Mock()
-        mock_circle.ObjectID = 12346
-        mock_circle.ObjectName = "AcDbCircle"
-        mock_circle.Layer = "0"
-        mock_circle.Area = 78.54
-        mock_autocad.model.AddCircle.return_value = mock_circle
-        
-        # Test data
-        data = {
-            'center_point': [50, 50, 0],
-            'radius': 25.0,
-            'layer': 'CIRCLES'
-        }
-        
-        response = client.post('/draw/circle',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 200
-        response_data = response.get_json()
-        
-        assert response_data['success'] is True
-        assert response_data['entity_id'] == 12346
-        assert response_data['entity_type'] == "AcDbCircle"
-        assert response_data['center_point'] == [50, 50, 0]
-        assert response_data['radius'] == 25.0
-        assert response_data['circumference'] == pytest.approx(157.08, rel=1e-2)
-        
-        # Verify AutoCAD was called correctly
-        mock_autocad.model.AddCircle.assert_called_once_with([50, 50, 0], 25.0)
-        assert mock_circle.Layer == "CIRCLES"
-    
-    def test_draw_circle_negative_radius(self, client):
-        """Test circle creation with negative radius."""
-        data = {
-            'center_point': [0, 0, 0],
-            'radius': -10.0
-        }
-        
-        response = client.post('/draw/circle',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'INVALID_PARAMETERS'
-        assert 'positive' in response_data['error']
-    
-    def test_draw_circle_missing_radius(self, client):
-        """Test circle creation without radius."""
-        data = {'center_point': [0, 0, 0]}  # Missing radius
-        
-        response = client.post('/draw/circle',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'MISSING_REQUIRED_FIELDS'
-
-
-class TestDrawPolyline:
-    """Test cases for /draw/polyline endpoint."""
-    
-    def test_draw_polyline_success(self, client, mock_autocad):
-        """Test successful polyline creation."""
-        # Setup mock
-        mock_polyline = Mock()
-        mock_polyline.ObjectID = 12347
-        mock_polyline.ObjectName = "AcDbPolyline"
-        mock_polyline.Layer = "0"
-        mock_polyline.Length = 300.0
-        mock_polyline.Closed = False
-        mock_autocad.model.AddLightWeightPolyline.return_value = mock_polyline
-        
-        # Test data
-        data = {
-            'points': [[0, 0, 0], [100, 0, 0], [100, 100, 0], [0, 100, 0]],
-            'closed': False,
-            'layer': 'POLYLINES'
-        }
-        
-        response = client.post('/draw/polyline',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 200
-        response_data = response.get_json()
-        
-        assert response_data['success'] is True
-        assert response_data['entity_id'] == 12347
-        assert response_data['entity_type'] == "AcDbPolyline"
-        assert response_data['point_count'] == 4
-        assert response_data['closed'] is False
-        
-        # Verify AutoCAD was called
-        mock_autocad.model.AddLightWeightPolyline.assert_called_once()
-        assert mock_polyline.Layer == "POLYLINES"
-        assert mock_polyline.Closed is False
-    
-    def test_draw_polyline_closed(self, client, mock_autocad):
-        """Test closed polyline creation."""
-        # Setup mock
-        mock_polyline = Mock()
-        mock_polyline.ObjectID = 12348
-        mock_polyline.ObjectName = "AcDbPolyline"
-        mock_polyline.Layer = "0"
-        mock_polyline.Length = 400.0
-        mock_polyline.Area = 10000.0
-        mock_polyline.Closed = True
-        mock_autocad.model.AddLightWeightPolyline.return_value = mock_polyline
-        
-        # Test data - square polyline
-        data = {
-            'points': [[0, 0, 0], [100, 0, 0], [100, 100, 0], [0, 100, 0]],
-            'closed': True
-        }
-        
-        response = client.post('/draw/polyline',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 200
-        response_data = response.get_json()
-        
-        assert response_data['success'] is True
-        assert response_data['closed'] is True
-        assert mock_polyline.Closed is True
-    
-    def test_draw_polyline_insufficient_points(self, client):
-        """Test polyline creation with insufficient points."""
-        data = {
-            'points': [[0, 0, 0]]  # Only one point
-        }
-        
-        response = client.post('/draw/polyline',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'INVALID_PARAMETERS'
-        assert 'at least 2 points' in response_data['error']
-    
-    def test_draw_polyline_invalid_point(self, client):
-        """Test polyline creation with invalid point in array."""
-        data = {
-            'points': [[0, 0, 0], [100, 'invalid', 0]]  # Invalid Y coordinate
-        }
-        
-        response = client.post('/draw/polyline',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'INVALID_PARAMETERS'
-        assert 'index 1' in response_data['error']
-
-
-class TestDrawRectangle:
-    """Test cases for /draw/rectangle endpoint."""
-    
-    def test_draw_rectangle_success(self, client, mock_autocad):
-        """Test successful rectangle creation."""
-        # Setup mock
-        mock_rectangle = Mock()
-        mock_rectangle.ObjectID = 12349
-        mock_rectangle.ObjectName = "AcDbPolyline"
-        mock_rectangle.Layer = "0"
-        mock_rectangle.Area = 5000.0
-        mock_rectangle.Length = 300.0
-        mock_rectangle.Closed = True
-        mock_autocad.model.AddLightWeightPolyline.return_value = mock_rectangle
-        
-        # Test data
-        data = {
-            'corner1': [0, 0, 0],
-            'corner2': [100, 50, 0],
-            'layer': 'RECTANGLES'
-        }
-        
-        response = client.post('/draw/rectangle',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 200
-        response_data = response.get_json()
-        
-        assert response_data['success'] is True
-        assert response_data['entity_id'] == 12349
-        assert response_data['entity_type'] == "AcDbPolyline"
-        assert response_data['width'] == 100.0
-        assert response_data['height'] == 50.0
-        assert response_data['corner1'] == [0, 0, 0]
-        assert response_data['corner2'] == [100, 50, 0]
-        
-        # Verify AutoCAD was called
-        mock_autocad.model.AddLightWeightPolyline.assert_called_once()
-        assert mock_rectangle.Layer == "RECTANGLES"
-        assert mock_rectangle.Closed is True
-    
-    def test_draw_rectangle_negative_dimensions(self, client, mock_autocad):
-        """Test rectangle creation with negative dimensions (should work)."""
-        # Setup mock
-        mock_rectangle = Mock()
-        mock_rectangle.ObjectID = 12350
-        mock_rectangle.ObjectName = "AcDbPolyline"
-        mock_rectangle.Layer = "0"
-        mock_autocad.model.AddLightWeightPolyline.return_value = mock_rectangle
-        
-        # Test data with corner2 having smaller coordinates than corner1
-        data = {
-            'corner1': [100, 100, 0],
-            'corner2': [0, 0, 0]
-        }
-        
-        response = client.post('/draw/rectangle',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 200
-        response_data = response.get_json()
-        
-        assert response_data['success'] is True
-        assert response_data['width'] == 100.0  # abs(0 - 100)
-        assert response_data['height'] == 100.0  # abs(0 - 100)
-    
-    def test_draw_rectangle_missing_corner(self, client):
-        """Test rectangle creation with missing corner."""
-        data = {'corner1': [0, 0, 0]}  # Missing corner2
-        
-        response = client.post('/draw/rectangle',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'MISSING_REQUIRED_FIELDS'
-        assert 'corner2' in response_data['error']
-
-
-class TestCommonScenarios:
-    """Test common scenarios across all drawing operations."""
-    
-    def test_invalid_layer_name(self, client):
-        """Test drawing operation with invalid layer name."""
-        data = {
-            'start_point': [0, 0, 0],
-            'end_point': [100, 100, 0],
-            'layer': 'LAYER<INVALID>'  # Contains invalid character
-        }
-        
-        response = client.post('/draw/line',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'INVALID_PARAMETERS'
-        assert 'invalid character' in response_data['error']
-    
-    def test_no_content_type_header(self, client):
-        """Test request without proper Content-Type header."""
-        data = {'start_point': [0, 0, 0], 'end_point': [100, 100, 0]}
-        
-        response = client.post('/draw/line',
-                             data=json.dumps(data))  # No content_type specified
-        
-        assert response.status_code == 400
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'INVALID_CONTENT_TYPE'
-    
-    @patch('src.decorators.require_autocad_connection')
-    def test_autocad_connection_required(self, mock_require_connection, client):
-        """Test that AutoCAD connection is required for drawing operations."""
-        # Mock the decorator to simulate connection failure
-        def mock_decorator(func):
-            def wrapper(*args, **kwargs):
-                from flask import jsonify
-                return jsonify({
-                    'success': False,
-                    'error': 'AutoCAD not connected',
-                    'error_code': 'AUTOCAD_NOT_CONNECTED'
-                }), 503
-            return wrapper
-        
-        mock_require_connection.return_value = mock_decorator
-        
-        data = {
-            'start_point': [0, 0, 0],
-            'end_point': [100, 100, 0]
-        }
-        
-        response = client.post('/draw/line',
-                             data=json.dumps(data),
-                             content_type='application/json')
-        
-        assert response.status_code == 503
-        response_data = response.get_json()
-        
-        assert response_data['success'] is False
-        assert response_data['error_code'] == 'AUTOCAD_NOT_CONNECTED'
-
-
-# Integration test markers for pytest
-@pytest.mark.integration
-class TestDrawingIntegration:
-    """Integration tests that require actual AutoCAD connection."""
-    
-    def test_real_autocad_line_creation(self, client):
-        """
-        Integration test for line creation with real AutoCAD.
-        This test will be skipped if AutoCAD is not running.
-        """
-        # This would only run with actual AutoCAD instance
-        pytest.skip("Integration test - requires AutoCAD 2025 running")
-    
-    def test_real_autocad_circle_creation(self, client):
-        """Integration test for circle creation with real AutoCAD."""
-        pytest.skip("Integration test - requires AutoCAD 2025 running")
+    @pytest.mark.integration
+    @pytest.mark.skip(reason="Requires AutoCAD 2025 running")
+    async def test_real_autocad_integration(self):
+        """Integration test with actual AutoCAD instance."""
+        # This would test with real AutoCAD - skipped for unit tests
+        pass
