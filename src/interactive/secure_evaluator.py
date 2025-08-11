@@ -241,13 +241,28 @@ class SecureExpressionEvaluator:
         Raises:
             SecureEvaluationError: If expression is unsafe or evaluation fails
         """
+        # DEBUG: Log evaluation attempt for security analysis
+        logger.info(f"DEBUG: safe_eval called with expression: {expression}")
+        logger.info(f"DEBUG: Local variables keys: {list(local_vars.keys()) if local_vars else []}")
+        logger.info(
+            f"DEBUG: Global variables keys: {list(global_vars.keys()) if global_vars else []}"
+        )
+
         # Security check
         if not self.is_safe_expression(expression):
+            logger.warning(f"DEBUG: Expression validation failed for: {expression}")
             raise SecureEvaluationError(f"Expression failed security validation: {expression}")
+
+        # DEBUG: Log successful validation
+        logger.info(f"DEBUG: Expression validation passed for: {expression}")
 
         # Prepare safe namespace
         safe_locals = self._create_safe_namespace(local_vars or {})
         safe_globals = self._create_safe_namespace(global_vars or {})
+
+        # DEBUG: Log namespace preparation
+        logger.info(f"DEBUG: Safe locals count: {len(safe_locals)}")
+        logger.info(f"DEBUG: Safe globals count: {len(safe_globals)}")
 
         # Add safe built-ins
         safe_globals.update(
@@ -287,21 +302,28 @@ class SecureExpressionEvaluator:
             try:
                 tree = ast.parse(expression, mode="eval")
                 code = compile(tree, "<secure_eval>", "eval")
-                # Evaluate with restricted namespace
+                # DEBUG: Log eval execution
+                logger.info(f"DEBUG: Executing eval() with restricted namespace")
                 result = eval(code, safe_globals, safe_locals)
+                logger.info(f"DEBUG: Eval successful, result type: {type(result).__name__}")
                 return result
             except SyntaxError:
                 # If it's not a valid expression, try as a statement
+                logger.info(f"DEBUG: Expression failed as eval, trying exec()")
                 tree = ast.parse(expression, mode="exec")
                 code = compile(tree, "<secure_eval>", "exec")
                 # Execute with restricted namespace (statements return None)
+                logger.info(f"DEBUG: Executing exec() with restricted namespace")
                 exec(code, safe_globals, safe_locals)
+                logger.info(f"DEBUG: Exec() completed successfully")
                 return None
 
         except SecureEvaluationError:
             # Re-raise our own security errors
             raise
         except Exception as e:
+            # DEBUG: Log execution errors
+            logger.error(f"DEBUG: Execution failed: {e}")
             # Let Python errors propagate without wrapping
             raise
 

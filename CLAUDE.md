@@ -18,6 +18,7 @@
 - Review `Session_Handoff.md` before your initial task when working with the codebase.
 - Review the latest documentation in the project folder for a general overview of the codebase.
 - Do not add any developer or authorship credits to anything you write.
+- Do not write any authorship credits in any document.
 
 ## Core Principles
 

@@ -7,13 +7,13 @@ execution in AutoCAD context. Ensures safe execution while preventing
 dangerous operations.
 """
 
-import logging
 import ast
+import logging
 import re
 import signal
-import time
 import threading
-from typing import Dict, Any, List, Set, Optional, Callable
+import time
+from typing import Any, Callable, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -141,10 +141,10 @@ class SecurityManager:
             "type",
             "zip",
         }
-        
+
         # Resource limits for safe execution
         self.max_execution_time = 30.0  # seconds
-        self.max_code_length = 10000    # characters
+        self.max_code_length = 10000  # characters
         self.max_output_length = 50000  # characters
 
         logger.info("Security Manager initialized with enhanced protections")
@@ -159,21 +159,32 @@ class SecurityManager:
         Returns:
             Tuple of (is_safe, list_of_violations)
         """
+        # DEBUG: Log code validation attempt
+        logger.info(f"DEBUG: validate_python_code called with code length: {len(code)}")
+        logger.info(
+            f"DEBUG: Code preview: {code[:100]}..." if len(code) > 100 else f"DEBUG: Code: {code}"
+        )
+
         violations = []
-        
+
         try:
             # Check code length
             if len(code) > self.max_code_length:
                 violations.append(f"Code too long: {len(code)} > {self.max_code_length} characters")
+                logger.warning(
+                    f"DEBUG: Code length violation: {len(code)} > {self.max_code_length}"
+                )
                 return False, violations
-            
+
             # Check for empty or whitespace-only code
             if not code.strip():
                 violations.append("Empty code not allowed")
+                logger.warning("DEBUG: Empty code violation")
                 return False, violations
 
             # Parse code into AST
             tree = ast.parse(code)
+            logger.info(f"DEBUG: Code parsed successfully, AST nodes: {len(list(ast.walk(tree)))}")
 
             # Check for dangerous constructs
             validator = CodeValidator(self)
@@ -181,25 +192,26 @@ class SecurityManager:
 
             if validator.violations:
                 violations.extend(validator.violations)
-                logger.warning(f"Security violations found in code: {validator.violations}")
+                logger.warning(f"DEBUG: Security violations found in code: {validator.violations}")
                 return False, violations
 
             # Additional string-based checks
             string_violations = self._validate_code_strings(code)
             if string_violations:
                 violations.extend(string_violations)
+                logger.warning(f"DEBUG: String violations found: {string_violations}")
                 return False, violations
 
-            logger.debug("Code validation passed")
+            logger.info("DEBUG: Code validation passed - no security issues found")
             return True, []
 
         except SyntaxError as e:
             violations.append(f"Syntax error in code: {str(e)}")
-            logger.warning(f"Syntax error in code: {str(e)}")
+            logger.error(f"DEBUG: Syntax error in code validation: {e}")
             return False, violations
         except Exception as e:
             violations.append(f"Error validating code: {str(e)}")
-            logger.error(f"Error validating code: {str(e)}")
+            logger.error(f"DEBUG: Error in code validation: {e}")
             return False, violations
 
     def _validate_code_strings(self, code: str) -> List[str]:
@@ -213,7 +225,7 @@ class SecurityManager:
             List of violations found (empty if code is safe)
         """
         violations = []
-        
+
         # Check for dangerous patterns (case-insensitive)
         dangerous_patterns = [
             (r"(?i)__import__\s*\(", "Dynamic import detected"),
@@ -389,7 +401,7 @@ class CodeValidator(ast.NodeVisitor):
                 self.violations.append(f"Blocked method call: {node.func.attr}")
 
         self.generic_visit(node)
-    
+
     def visit_While(self, node):
         """Check while loops for potential infinite loops."""
         # Check for while True: constructs
@@ -398,7 +410,7 @@ class CodeValidator(ast.NodeVisitor):
         elif isinstance(node.test, ast.NameConstant) and node.test.value is True:
             self.violations.append("Potential infinite loop: while True")
         self.generic_visit(node)
-    
+
     def visit_For(self, node):
         """Check for loops for potential infinite loops."""
         # Check for dangerous iterator patterns
@@ -406,34 +418,34 @@ class CodeValidator(ast.NodeVisitor):
             if isinstance(node.iter.func, ast.Name) and node.iter.func.id == "iter":
                 self.violations.append("Potential infinite loop: for ... in iter(...)")
         self.generic_visit(node)
-    
+
     def visit_ListComp(self, node):
         """Check list comprehensions for dangerous patterns."""
         self._check_comprehension(node, "list comprehension")
         self.generic_visit(node)
-    
+
     def visit_SetComp(self, node):
         """Check set comprehensions for dangerous patterns."""
         self._check_comprehension(node, "set comprehension")
         self.generic_visit(node)
-    
+
     def visit_DictComp(self, node):
         """Check dict comprehensions for dangerous patterns."""
         self._check_comprehension(node, "dict comprehension")
         self.generic_visit(node)
-    
+
     def visit_GeneratorExp(self, node):
         """Check generator expressions for dangerous patterns."""
         self._check_comprehension(node, "generator expression")
         self.generic_visit(node)
-    
+
     def _check_comprehension(self, node, comp_type: str):
         """Check comprehensions for dangerous iterator patterns."""
         for generator in node.generators:
             if isinstance(generator.iter, ast.Call):
                 if isinstance(generator.iter.func, ast.Name) and generator.iter.func.id == "iter":
                     self.violations.append(f"Potential infinite loop in {comp_type}: iter(...)")
-    
+
     def visit_Lambda(self, node):
         """Check lambda functions for dangerous patterns."""
         # Lambda functions can be used to bypass restrictions, validate their body
@@ -451,13 +463,13 @@ class CodeValidator(ast.NodeVisitor):
             if isinstance(node.ctx, ast.Load):  # Only flag when loading/reading
                 self.violations.append(f"Blocked name reference: {node.id}")
         self.generic_visit(node)
-    
+
     def visit_Subscript(self, node):
         """Check subscript access for dangerous patterns."""
         # Check for potential __getitem__ abuse
         if isinstance(node.value, ast.Name):
             dangerous_subscripts = ["__builtins__", "__globals__", "__locals__"]
-            if hasattr(node.slice, 'value') and isinstance(node.slice.value, ast.Str):
+            if hasattr(node.slice, "value") and isinstance(node.slice.value, ast.Str):
                 if node.slice.value.s in dangerous_subscripts:
                     self.violations.append(f"Dangerous subscript access: {node.slice.value.s}")
         self.generic_visit(node)
@@ -465,4 +477,5 @@ class CodeValidator(ast.NodeVisitor):
 
 class SecurityError(Exception):
     """Custom exception for security violations."""
+
     pass

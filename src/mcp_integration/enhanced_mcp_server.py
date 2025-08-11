@@ -44,6 +44,10 @@ class EnhancedMCPServer:
         self.autocad_wrapper = None
         self._secure_evaluator = SecureExpressionEvaluator()
 
+        # DEBUG: Log SecurityManager initialization
+        logger.info("DEBUG: SecurityManager initialized in EnhancedMCPServer")
+        logger.info(f"DEBUG: SecurityManager type: {type(self.security_manager)}")
+
         # Initialize interactive components (lazy import to avoid circular dependency)
         self.python_repl = None
         self.execution_engine = None
@@ -97,12 +101,13 @@ class EnhancedMCPServer:
 
     def get_tool(self, tool_name: str):
         """Get tool by name for testing purposes."""
+
         # Create a simple tool wrapper that provides .fn() access
         class ToolWrapper:
             def __init__(self, server, name):
                 self.server = server
                 self.name = name
-            
+
             def fn(self, **kwargs):
                 # Direct method mapping for common tools
                 if self.name == "draw_line":
@@ -113,49 +118,57 @@ class EnhancedMCPServer:
                     return self._status(**kwargs)
                 else:
                     raise AttributeError(f"Tool '{self.name}' not found or not accessible")
-            
+
             def _draw_line(self, start_point, end_point):
                 try:
                     # Check if we're in a test environment (concurrent operations)
                     import threading
+
                     current_thread = threading.current_thread()
                     if current_thread.name != "MainThread" and hasattr(current_thread, "_target"):
                         # Mock response for concurrent testing to avoid COM threading issues
                         import time
+
                         time.sleep(0.001)  # Simulate brief operation time
                         return f"Line created successfully with entity ID: mock_{hash(str(start_point) + str(end_point)) % 10000}"
-                    
+
                     acad = self.server._get_autocad_wrapper()
                     entity_id = acad.draw_line(start_point, end_point)
                     return f"Line created successfully with entity ID: {entity_id}"
                 except Exception as e:
                     logger.error(f"Error drawing line: {e}")
                     from mcp.types import ErrorData
+
                     raise McpError(ErrorData(code=-32603, message=f"Failed to draw line: {str(e)}"))
-            
+
             def _draw_circle(self, center, radius):
                 try:
                     # Check if we're in a test environment (concurrent operations)
                     import threading
+
                     current_thread = threading.current_thread()
                     if current_thread.name != "MainThread" and hasattr(current_thread, "_target"):
                         # Mock response for concurrent testing to avoid COM threading issues
                         import time
+
                         time.sleep(0.001)  # Simulate brief operation time
                         return f"Circle created successfully with entity ID: mock_{hash(str(center) + str(radius)) % 10000}"
-                    
+
                     acad = self.server._get_autocad_wrapper()
                     entity_id = acad.draw_circle(center, radius)
                     return f"Circle created successfully with entity ID: {entity_id}"
                 except Exception as e:
                     logger.error(f"Error drawing circle: {e}")
                     from mcp.types import ErrorData
-                    raise McpError(ErrorData(code=-32603, message=f"Failed to draw circle: {str(e)}"))
-            
+
+                    raise McpError(
+                        ErrorData(code=-32603, message=f"Failed to draw circle: {str(e)}")
+                    )
+
             def _status(self):
                 autocad_status = "active" if self.server.autocad_wrapper else "inactive"
                 return f"AutoCAD Status: Server running, AutoCAD connection {autocad_status}, tools registered: True"
-        
+
         return ToolWrapper(self, tool_name)
 
     def _get_python_repl(self):
