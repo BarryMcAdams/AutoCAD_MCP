@@ -159,7 +159,7 @@ class CodeReviewRule:
         self.severity = severity
         self.name = ""
         self.description = ""
-        self.pattern = None  # Can be regex, AST pattern, or callable
+        self.pattern: Union[str, Callable, None] = None  # Can be regex, AST pattern, or callable
         self.message_template = ""
         self.suggested_fix_template = ""
         self.references = []
@@ -225,7 +225,10 @@ class CodeReviewRule:
         )
 
     def _create_finding_from_match(
-        self, match: re.Match, line_number: int, code: str
+        self,
+        match: re.Match,
+        line_number: int,
+        code: str,
     ) -> ReviewFinding:
         """Create a ReviewFinding from a regex match."""
         lines = code.split("\n")
@@ -354,6 +357,55 @@ class AutoCADASTVisitor(ast.NodeVisitor):
         return False
 
 
+class SecurityASTVisitor(ast.NodeVisitor):
+    """AST visitor for security-related code analysis."""
+
+    def __init__(self):
+        self.findings = []
+        self.dangerous_functions = {"eval", "exec", "compile"}
+
+    def visit_Call(self, node: ast.Call):
+        """Analyze function calls for dangerous patterns."""
+        call_name = self._get_call_name(node)
+
+        if call_name in self.dangerous_functions:
+            try:
+                code_snippet = ast.unparse(node)
+            except AttributeError:  # unparse is not available in older python versions
+                code_snippet = "..."
+
+            self.findings.append(
+                {
+                    "line": node.lineno,
+                    "name": call_name,
+                    "code_snippet": code_snippet,
+                }
+            )
+        self.generic_visit(node)
+
+    def _get_call_name(self, node: ast.Call) -> str:
+        """Get the name of a function call."""
+        if isinstance(node.func, ast.Name):
+            return node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            return self._get_attribute_chain(node.func)
+        return ""
+
+    def _get_attribute_chain(self, node: ast.Attribute) -> str:
+        """Get the full attribute chain."""
+        parts = []
+        current = node
+
+        while isinstance(current, ast.Attribute):
+            parts.append(current.attr)
+            current = current.value
+
+        if isinstance(current, ast.Name):
+            parts.append(current.id)
+
+        return ".".join(reversed(parts))
+
+
 class AutomatedCodeReviewer:
     """
     Automated code review system with comprehensive quality analysis.
@@ -384,19 +436,12 @@ class AutomatedCodeReviewer:
         logger.info("Automated code reviewer initialized")
 
     def review_code(
-        self, code: str, file_path: str, context: Optional[Dict[str, Any]] = None
+        self,
+        code: str,
+        file_path: str,
+        context: Optional[Dict[str, Any]] = None,
     ) -> CodeReviewReport:
-        """
-        Perform comprehensive automated code review.
-
-        Args:
-            code: Source code to review
-            file_path: Path to the source file
-            context: Additional context information
-
-        Returns:
-            Comprehensive code review report
-        """
+        """Perform comprehensive automated code review."""
         start_time = time.time()
         review_id = f"review_{int(time.time() * 1000) % 1000000:06d}"
 
@@ -419,11 +464,11 @@ class AutomatedCodeReviewer:
                 )
                 # Since we can't create a full report without metrics, we'll have to return a minimal one
                 return CodeReviewReport(
-                    review_id=review_id, 
-                    timestamp=time.time(), 
+                    review_id=review_id,
+                    timestamp=time.time(),
                     file_path=file_path,
                     quality_metrics=QualityMetrics(overall_score=0.0),
-                    findings=[syntax_finding]
+                    findings=[syntax_finding],
                 )
 
             # Run all review rules
@@ -448,10 +493,10 @@ class AutomatedCodeReviewer:
             quality_metrics = self._calculate_quality_metrics(code, ast_tree, all_findings)
 
             report = CodeReviewReport(
-                review_id=review_id, 
-                timestamp=time.time(), 
+                review_id=review_id,
+                timestamp=time.time(),
                 file_path=file_path,
-                quality_metrics=quality_metrics
+                quality_metrics=quality_metrics,
             )
 
             # Process and rank findings
@@ -509,15 +554,7 @@ class AutomatedCodeReviewer:
         return report
 
     def review_multiple_files(self, file_paths: List[str]) -> Dict[str, CodeReviewReport]:
-        """
-        Review multiple files and provide aggregated insights.
-
-        Args:
-            file_paths: List of file paths to review
-
-        Returns:
-            Dictionary mapping file paths to review reports
-        """
+        """Review multiple files and provide aggregated insights."""
         reports = {}
 
         for file_path in file_paths:
@@ -542,15 +579,7 @@ class AutomatedCodeReviewer:
         return reports
 
     def get_quality_trend_analysis(self, file_path: str) -> Dict[str, Any]:
-        """
-        Analyze quality trends for a specific file.
-
-        Args:
-            file_path: Path to analyze trends for
-
-        Returns:
-            Trend analysis report
-        """
+        """Analyze quality trends for a specific file."""
         file_history = [report for report in self.review_history if report.file_path == file_path]
 
         if len(file_history) < 2:
@@ -587,15 +616,7 @@ class AutomatedCodeReviewer:
         return trend_analysis
 
     def generate_team_quality_report(self, reports: Dict[str, CodeReviewReport]) -> Dict[str, Any]:
-        """
-        Generate team-wide quality report from multiple file reviews.
-
-        Args:
-            reports: Dictionary of file path to review reports
-
-        Returns:
-            Team quality report
-        """
+        """Generate team-wide quality report from multiple file reviews."""
         if not reports:
             return {"error": "No reports provided"}
 
@@ -663,7 +684,7 @@ class AutomatedCodeReviewer:
         string_concat_rule.description = (
             "Use join() instead of += for string concatenation in loops"
         )
-        string_concat_rule.pattern = r'\s*\w+\s*\+=\s*["\'].*["\']'
+        string_concat_rule.pattern = r'\s*\w+\s*\+=\s*["\'].*["\"]'
         string_concat_rule.quality_impact = -0.2
         rules.append(string_concat_rule)
 
@@ -695,7 +716,9 @@ class AutomatedCodeReviewer:
         """Create a checker function for COM error handling."""
 
         def check_com_errors(
-            code: str, ast_tree: Optional[ast.AST], context: Optional[Dict[str, Any]]
+            code: str,
+            ast_tree: Optional[ast.AST],
+            context: Optional[Dict[str, Any]],
         ) -> List[Dict[str, Any]]:
             findings = []
 
@@ -818,47 +841,63 @@ class AutomatedCodeReviewer:
         findings = []
 
         try:
-            # Check for dangerous functions
-            dangerous_functions = ["eval", "exec", "compile"]
-            for func in dangerous_functions:
-                if f"{func}(" in code:
-                    findings.append(
-                        ReviewFinding(
-                            id=f"dangerous_function_{func}_{int(time.time() * 1000) % 1000:06d}",
-                            category=ReviewCategory.SECURITY,
-                            severity=ReviewSeverity.CRITICAL,
-                            title=f"Dangerous Function: {func}()",
-                            description=f"Using {func}() can be dangerous and should be avoided",
-                            file_path="",
-                            line_number=1,
-                            quality_impact=-1.0,
-                        )
+            # Check for dangerous functions using AST visitor
+            security_visitor = SecurityASTVisitor()
+            security_visitor.visit(ast_tree)
+            for finding in security_visitor.findings:
+                findings.append(
+                    ReviewFinding(
+                        id=f"dangerous_function_{finding['name']}_{finding['line']}",
+                        category=ReviewCategory.SECURITY,
+                        severity=ReviewSeverity.CRITICAL,
+                        title=f"Dangerous Function: {finding['name']}()",
+                        description=f"Using {finding['name']}() can be dangerous and should be avoided",
+                        file_path="",
+                        line_number=finding["line"],
+                        code_snippet=finding["code_snippet"],
+                        quality_impact=-1.0,
                     )
+                )
 
-            # Check for hardcoded passwords or keys
+            # Check for hardcoded secrets
             password_patterns = [
                 r'password\s*=\s*["\'][^"\']+["\']',
                 r'key\s*=\s*["\'][^"\']+["\']',
                 r'secret\s*=\s*["\'][^"\']+["\']',
+                r'token\s*=\s*["\'][^"\']+["\']',
+                r'api_key\s*=\s*["\'][^"\']+["\']',
+                r'access_key\s*=\s*["\'][^"\']+["\']',
+                r'secret_key\s*=\s*["\'][^"\']+["\']',
+                r'private_key\s*=\s*["\'][^"\']+["\']',
+                r'credential\s*=\s*["\'][^"\']+["\']',
+                r'auth\s*=\s*["\'][^"\']+["\']',
+                r'admin_pass\s*=\s*["\'][^"\']+["\']',
             ]
 
             for pattern in password_patterns:
-                matches = re.finditer(pattern, code, re.IGNORECASE)
-                for match in matches:
-                    line_number = code[: match.start()].count("\n") + 1
-                    findings.append(
-                        ReviewFinding(
-                            id=f"hardcoded_secret_{line_number}_{int(time.time() * 1000) % 1000:06d}",
-                            category=ReviewCategory.SECURITY,
-                            severity=ReviewSeverity.MAJOR,
-                            title="Hardcoded Secret",
-                            description="Secrets should not be hardcoded in source code",
-                            file_path="",
-                            line_number=line_number,
-                            quality_impact=-0.6,
-                            suggested_fix="Use environment variables or secure configuration files",
-                        )
-                    )
+                try:
+                    matches = re.finditer(pattern, code, re.IGNORECASE)
+                    # Convert to list to count matches without consuming the iterator
+                    matches_list = list(matches)
+                    for match in matches_list:
+                        try:
+                            line_number = code[: match.start()].count("\n") + 1
+                            finding = ReviewFinding(
+                                id=f"hardcoded_secret_{line_number}",
+                                category=ReviewCategory.SECURITY,
+                                severity=ReviewSeverity.MAJOR,
+                                title="Hardcoded Secret",
+                                description="Secrets should not be hardcoded in source code",
+                                file_path="",
+                                line_number=line_number,
+                                quality_impact=-0.6,
+                                suggested_fix="Use environment variables or secure configuration files",
+                            )
+                            findings.append(finding)
+                        except Exception as e:
+                            logger.error(f"Error processing password pattern match: {e}")
+                except Exception as e:
+                    logger.error(f"Error processing password pattern: {e}")
 
         except Exception as e:
             logger.error(f"Security pattern analysis failed: {e}")
@@ -866,7 +905,10 @@ class AutomatedCodeReviewer:
         return findings
 
     def _calculate_quality_metrics(
-        self, code: str, ast_tree: ast.AST, findings: List[ReviewFinding]
+        self,
+        code: str,
+        ast_tree: ast.AST,
+        findings: List[ReviewFinding],
     ) -> QualityMetrics:
         """Calculate comprehensive quality metrics."""
         metrics = QualityMetrics(overall_score=10.0)  # Start with perfect score
