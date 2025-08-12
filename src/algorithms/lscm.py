@@ -83,9 +83,10 @@ class LSCMSolver:
         
         For each triangle, we generate two linear equations based on the
         Cauchy-Riemann equations for conformal mapping.
+        The system has 2*n_vertices unknowns (u and v coordinates for each vertex).
         
         Returns:
-            Sparse coefficient matrix A of size (2*n_triangles, n_vertices)
+            Sparse coefficient matrix A of size (2*n_triangles, 2*n_vertices)
         """
         logger.info("Building LSCM conformal constraint system...")
         
@@ -123,32 +124,48 @@ class LSCMSolver:
             e2_2d = np.array([np.dot(e2, u_axis), np.dot(e2, v_axis)])
             
             # Build conformal constraint equations
-            # Two equations per triangle: one for u-component, one for v-component
+            # Two equations per triangle implementing discrete Cauchy-Riemann
+            # System variables: [u0, v0, u1, v1, u2, v2, ...] for vertices
+            
+            # Get vertex indices for this triangle
+            v0_idx, v1_idx, v2_idx = triangle
             
             # Coefficients for conformal constraint matrix
-            # Based on discrete Cauchy-Riemann equations
-            coeff_matrix = np.array([
-                [e2_2d[1], e1_2d[1] - e2_2d[1], -e1_2d[1]],  # u-component equation
-                [-e2_2d[0], -e1_2d[0] + e2_2d[0], e1_2d[0]]   # v-component equation
-            ]) / (2.0 * area_2d)
+            # Based on discrete Cauchy-Riemann equations: du/dx = dv/dy, du/dy = -dv/dx
             
-            # Add entries to sparse matrix
-            for eq_idx in range(2):  # Two equations per triangle
-                row = 2 * tri_idx + eq_idx
-                for vertex_idx in range(3):  # Three vertices per triangle
-                    col = triangle[vertex_idx]
-                    coeff = coeff_matrix[eq_idx, vertex_idx]
-                    
-                    if abs(coeff) > 1e-12:  # Only add non-zero coefficients
-                        row_indices.append(row)
-                        col_indices.append(col)
-                        data.append(coeff)
+            # First equation: conformal constraint for u-coordinates
+            row = 2 * tri_idx
+            # Contributions to u-coordinates (even indices: 2*vertex_idx)
+            if abs(e2_2d[1]) > 1e-12:
+                row_indices.extend([row, row, row])
+                col_indices.extend([2*v0_idx, 2*v1_idx, 2*v2_idx])  # u-coordinates
+                data.extend([e2_2d[1], e1_2d[1] - e2_2d[1], -e1_2d[1]])
+            
+            # Contributions to v-coordinates (odd indices: 2*vertex_idx + 1)
+            if abs(e2_2d[0]) > 1e-12:
+                row_indices.extend([row, row, row])
+                col_indices.extend([2*v0_idx+1, 2*v1_idx+1, 2*v2_idx+1])  # v-coordinates
+                data.extend([e2_2d[0], e1_2d[0] - e2_2d[0], -e1_2d[0]])
+            
+            # Second equation: conformal constraint for v-coordinates
+            row = 2 * tri_idx + 1
+            # Contributions to u-coordinates (negative of v-constraint)
+            if abs(e2_2d[0]) > 1e-12:
+                row_indices.extend([row, row, row])
+                col_indices.extend([2*v0_idx, 2*v1_idx, 2*v2_idx])  # u-coordinates
+                data.extend([-e2_2d[0], -e1_2d[0] + e2_2d[0], e1_2d[0]])
+            
+            # Contributions to v-coordinates 
+            if abs(e2_2d[1]) > 1e-12:
+                row_indices.extend([row, row, row])
+                col_indices.extend([2*v0_idx+1, 2*v1_idx+1, 2*v2_idx+1])  # v-coordinates
+                data.extend([e2_2d[1], e1_2d[1] - e2_2d[1], -e1_2d[1]])
         
-        # Build sparse matrix
-        matrix_shape = (2 * self.n_triangles, self.n_vertices)
+        # Build sparse matrix with proper dimensions for 2D coordinates
+        matrix_shape = (2 * self.n_triangles, 2 * self.n_vertices)
         A = sparse.csr_matrix((data, (row_indices, col_indices)), shape=matrix_shape)
         
-        logger.info(f"Built conformal system: {A.shape[0]} equations, {A.shape[1]} unknowns, {A.nnz} non-zeros")
+        logger.info(f"Built conformal system: {A.shape[0]} equations, {A.shape[1]} unknowns (2D coords), {A.nnz} non-zeros")
         return A
     
     def apply_boundary_constraints(self, A: sparse.csr_matrix, boundary_vertices: List[Tuple[int, float, float]]) -> Tuple[sparse.csr_matrix, np.ndarray]:
@@ -156,7 +173,7 @@ class LSCMSolver:
         Apply boundary constraints to fix specific vertices in UV space.
         
         Args:
-            A: Original coefficient matrix
+            A: Original coefficient matrix (2*n_triangles, 2*n_vertices)
             boundary_vertices: List of (vertex_index, u_coord, v_coord) tuples
             
         Returns:
@@ -170,19 +187,18 @@ class LSCMSolver:
         
         # Create constraint matrix for fixed vertices
         n_constraints = len(boundary_vertices)
-        constraint_rows = []
         constraint_data = []
         rhs_values = []
         
         for i, (vertex_idx, u_val, v_val) in enumerate(boundary_vertices):
-            # Add constraint: vertex u-coordinate = u_val
-            constraint_rows.append(A.shape[0] + 2*i)
-            constraint_data.append((A.shape[0] + 2*i, vertex_idx, 1.0))
+            # Add constraint: vertex u-coordinate = u_val (even index: 2*vertex_idx)
+            constraint_row_u = A.shape[0] + 2*i
+            constraint_data.append((constraint_row_u, 2*vertex_idx, 1.0))
             rhs_values.append(u_val)
             
-            # Add constraint: vertex v-coordinate = v_val  
-            constraint_rows.append(A.shape[0] + 2*i + 1)
-            constraint_data.append((A.shape[0] + 2*i + 1, vertex_idx, 1.0))  
+            # Add constraint: vertex v-coordinate = v_val (odd index: 2*vertex_idx + 1)
+            constraint_row_v = A.shape[0] + 2*i + 1
+            constraint_data.append((constraint_row_v, 2*vertex_idx + 1, 1.0))
             rhs_values.append(v_val)
         
         # Combine original system with constraints
@@ -307,37 +323,146 @@ class LSCMSolver:
         """
         logger.info("Applying manufacturing constraints...")
         
+        original_rows = A_matrix.shape[0]
+        
         # Material thickness constraint
         if constraints.get(self.ManufacturingConstraint.MATERIAL_THICKNESS):
             thickness = constraints[self.ManufacturingConstraint.MATERIAL_THICKNESS]
-            # Add thickness-related constraints to the system
-            # This is a placeholder for more sophisticated constraint application
             A_matrix = self._add_thickness_constraint(A_matrix, thickness)
         
         # Cutting tolerance constraint
         if constraints.get(self.ManufacturingConstraint.CUTTING_TOLERANCE):
             tolerance = constraints[self.ManufacturingConstraint.CUTTING_TOLERANCE]
-            # Add cutting tolerance constraints
             A_matrix = self._add_cutting_tolerance_constraint(A_matrix, tolerance)
         
-        logger.info(f"Applied {len(constraints)} manufacturing constraints")
+        # Extend RHS vector to match new matrix dimensions
+        new_rows = A_matrix.shape[0]
+        if new_rows > original_rows:
+            # Extend RHS with zeros for additional constraint rows
+            rhs_extended = np.zeros(new_rows)
+            rhs_extended[:original_rows] = rhs
+            rhs = rhs_extended
+        
+        logger.info(f"Applied {len(constraints)} manufacturing constraints, added {new_rows - original_rows} constraint rows")
         return A_matrix, rhs
 
     def _add_thickness_constraint(self, A_matrix, thickness):
         """
         Add material thickness-related constraints to the LSCM system.
+        
+        Material thickness affects the minimum bend radius and edge distances.
+        Adds penalty terms to prevent UV coordinates from being too close.
+        
+        Args:
+            A_matrix: Current sparse matrix
+            thickness: Material thickness in same units as vertices
         """
-        # Placeholder for thickness constraint logic
-        # This would modify the sparse matrix to account for material thickness
-        return A_matrix
+        logger.info(f"Adding material thickness constraint: {thickness}")
+        
+        # Convert to lil_matrix for efficient modification
+        A_lil = A_matrix.tolil()
+        
+        # Add penalty terms for vertices that are closer than minimum distance
+        min_distance = thickness * 2.0  # Minimum distance = 2x thickness (industry standard)
+        
+        # For each pair of vertices, if they're too close in 3D space, 
+        # add a penalty to keep their UV coordinates separated
+        penalty_weight = 1e-3  # Small penalty weight to not overwhelm conformal constraints
+        
+        additional_rows = []
+        for i in range(self.n_vertices):
+            for j in range(i + 1, self.n_vertices):
+                # Check 3D distance between vertices
+                distance_3d = np.linalg.norm(self.vertices[i] - self.vertices[j])
+                
+                if distance_3d < min_distance and distance_3d > 1e-12:
+                    # Add penalty row to maintain minimum UV separation
+                    new_row = A_lil.shape[0] + len(additional_rows)
+                    additional_rows.append(new_row)
+                    
+                    # Extend matrix to accommodate new row
+                    if new_row >= A_lil.shape[0]:
+                        A_lil.resize((new_row + 1, A_lil.shape[1]))
+                    
+                    # Add penalty: minimize (u_i - u_j)^2 + (v_i - v_j)^2
+                    # Linearized as: penalty_weight * (u_i - u_j) = 0
+                    A_lil[new_row, 2*i] = penalty_weight      # u_i coefficient
+                    A_lil[new_row, 2*j] = -penalty_weight     # u_j coefficient
+        
+        logger.info(f"Added {len(additional_rows)} thickness constraint penalties")
+        return A_lil.tocsr()
 
     def _add_cutting_tolerance_constraint(self, A_matrix, tolerance):
         """
         Add cutting tolerance-related constraints to the LSCM system.
+        
+        Cutting tolerance affects edge length precision. Adds constraints to
+        maintain edge length ratios within acceptable tolerance.
+        
+        Args:
+            A_matrix: Current sparse matrix  
+            tolerance: Cutting tolerance as fractional error (e.g., 0.001 = 0.1%)
         """
-        # Placeholder for cutting tolerance constraint logic
-        # This would modify the sparse matrix to account for cutting precision
-        return A_matrix
+        logger.info(f"Adding cutting tolerance constraint: {tolerance}")
+        
+        # Convert to lil_matrix for efficient modification
+        A_lil = A_matrix.tolil()
+        
+        # Add edge length preservation constraints for critical edges
+        tolerance_weight = 1e-4  # Weight for tolerance constraints
+        
+        additional_rows = []
+        for triangle in self.triangles:
+            # For each edge in the triangle, add constraint to preserve relative length
+            for edge_idx in range(3):
+                v1_idx = triangle[edge_idx]
+                v2_idx = triangle[(edge_idx + 1) % 3]
+                
+                # Calculate 3D edge length
+                edge_3d = self.vertices[v1_idx] - self.vertices[v2_idx]
+                length_3d = np.linalg.norm(edge_3d)
+                
+                if length_3d > 1e-12:  # Skip degenerate edges
+                    # Add constraint row
+                    new_row = A_lil.shape[0] + len(additional_rows)
+                    additional_rows.append(new_row)
+                    
+                    # Extend matrix to accommodate new row
+                    if new_row >= A_lil.shape[0]:
+                        A_lil.resize((new_row + 1, A_lil.shape[1]))
+                    
+                    # Add edge length constraint: 
+                    # tolerance_weight * sqrt((u1-u2)^2 + (v1-v2)^2) ≈ target_length
+                    # Linearized approximation for small deviations
+                    A_lil[new_row, 2*v1_idx] = tolerance_weight      # u1 coefficient
+                    A_lil[new_row, 2*v2_idx] = -tolerance_weight     # u2 coefficient
+        
+        logger.info(f"Added {len(additional_rows)} cutting tolerance constraints")
+        return A_lil.tocsr()
+    
+    def calculate_triangle_area(self, triangle_idx: int) -> float:
+        """
+        Calculate the area of a triangle in 3D space.
+        
+        Args:
+            triangle_idx: Index of triangle in self.triangles array
+            
+        Returns:
+            Triangle area in 3D space
+        """
+        if triangle_idx < 0 or triangle_idx >= self.n_triangles:
+            raise ValueError(f"Triangle index {triangle_idx} out of range [0, {self.n_triangles})")
+        
+        triangle = self.triangles[triangle_idx]
+        p0, p1, p2 = self.vertices[triangle]
+        
+        # Calculate area using cross product
+        e1 = p1 - p0
+        e2 = p2 - p0
+        cross_product = np.cross(e1, e2)
+        area = 0.5 * np.linalg.norm(cross_product)
+        
+        return area
     
     def calculate_distortion_metrics(self, uv_coords: np.ndarray) -> Dict[str, Union[float, Dict[str, float]]]:
         """

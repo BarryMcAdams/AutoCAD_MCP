@@ -25,8 +25,7 @@ import shutil
 import subprocess
 from collections import defaultdict, Counter
 
-# Import AST utilities
-import astor  # For AST to source code conversion (fallback will be provided)
+# AST utilities (astor removed - was unused dependency)
 
 logger = logging.getLogger(__name__)
 
