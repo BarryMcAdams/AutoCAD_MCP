@@ -42,6 +42,8 @@ cryptography = "^41.0.0"
 astor = "^0.8.1"
 rope = "^1.7.0"
 jedi = "^0.19.0"
+pytest-asyncio = "^0.24.0"
+trio = "^0.30.0"
 
 [tool.poetry.group.ml]
 optional = true
@@ -63,15 +65,14 @@ ruff = "^0.5.5"
 mypy = "^1.0"
 bandit = "^1.7"
 safety = "^2.0"
-pytest-asyncio = "^0.23.2"
-
+pytest-asyncio = "^0.24.0"
 [tool.pytest.ini_options]
 pythonpath = ["."]
-asyncio_mode = "auto"
 markers = [
     "asyncio: mark test as asyncio",
     "integration: mark test as integration test"
 ]
+testpaths = ["tests"]
 
 # Black configuration
 [tool.black]
