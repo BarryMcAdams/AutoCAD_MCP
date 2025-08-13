@@ -41,6 +41,7 @@
 - Do not delete the `DELETED/` folder itself.
 - The `DELETED/` folder is in `.gitignore` so GitHub stays clean and organized.
 - This preserves all historical content while maintaining a tidy repository structure.
+- Do not delete any files or folders - move them to the DELETED folder located in the project's root directory. Check every existing folder in the project if you must.
 
 ### Project Tracking
 

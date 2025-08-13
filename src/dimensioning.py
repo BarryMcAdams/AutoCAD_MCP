@@ -87,6 +87,42 @@ class DimensioningSystem:
         except Exception as e:
             logger.error(f"Failed to setup dimension layers: {e}")
     
+    def _prepare_dimensioning_environment(self, layer_name: str) -> None:
+        """Sets up the active layer for dimensioning."""
+        self.setup_dimension_layers()
+        self.doc.ActiveLayer = self.doc.Layers.Item(layer_name)
+
+    def _convert_points_to_variant(self, *points: List[List[float]]) -> Tuple[Any, ...]:
+        """Converts a list of points to win32com VARIANT objects."""
+        return tuple(win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, p) for p in points)
+
+    def _apply_dimension_styles(self, dimension: Any) -> None:
+        """Applies predefined styles to a dimension object."""
+        dimension.TextHeight = self.dimension_settings['text_height']
+        dimension.ArrowheadSize = self.dimension_settings['arrow_size']
+        dimension.ExtensionLineExtend = self.dimension_settings['extension_line_extend']
+        dimension.ExtensionLineOffset = self.dimension_settings['extension_line_offset']
+        dimension.TextGap = self.dimension_settings['text_gap']
+        dimension.PrimaryUnitsPrecision = self.dimension_settings['precision']
+
+    def _create_linear_dimension_object(self, pt1: Any, pt2: Any, dim_pt: Any) -> Any:
+        """Creates the raw AutoCAD dimension object."""
+        return self.model_space.AddDimAligned(pt1, pt2, dim_pt)
+
+    def _build_linear_dimension_result(self, dimension: Any, start_point: List[float], end_point: List[float], dimension_line_point: List[float], text_override: Optional[str]) -> Dict[str, Any]:
+        """Builds the result dictionary for a linear dimension."""
+        distance = np.linalg.norm(np.array(end_point) - np.array(start_point))
+        return {
+            'handle': dimension.Handle,
+            'start_point': start_point,
+            'end_point': end_point,
+            'dimension_line_point': dimension_line_point,
+            'measured_distance': round(distance, self.dimension_settings['precision']),
+            'text_override': text_override,
+            'units': self.dimension_settings['units'],
+            'layer': self.dimension_settings['dimension_layer']
+        }
+
     def create_linear_dimension(self, start_point: List[float], end_point: List[float], 
                               dimension_line_point: List[float], text_override: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -104,56 +140,55 @@ class DimensioningSystem:
         try:
             logger.info(f"Creating linear dimension from {start_point} to {end_point}")
             
-            # Ensure layers exist
-            self.setup_dimension_layers()
+            self._prepare_dimensioning_environment(self.dimension_settings['dimension_layer'])
             
-            # Set current layer to dimensions
-            self.doc.ActiveLayer = self.doc.Layers.Item(self.dimension_settings['dimension_layer'])
+            pt1, pt2, dim_pt = self._convert_points_to_variant(start_point, end_point, dimension_line_point)
             
-            # Convert points to AutoCAD format
-            pt1 = win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, start_point)
-            pt2 = win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, end_point)
-            dim_pt = win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, dimension_line_point)
+            dimension = self._create_linear_dimension_object(pt1, pt2, dim_pt)
             
-            # Create aligned dimension (works for both horizontal and vertical)
-            dimension = self.model_space.AddDimAligned(pt1, pt2, dim_pt)
+            self._apply_dimension_styles(dimension)
             
-            # Apply dimension settings
-            dimension.TextHeight = self.dimension_settings['text_height']
-            dimension.ArrowheadSize = self.dimension_settings['arrow_size']
-            dimension.ExtensionLineExtend = self.dimension_settings['extension_line_extend']
-            dimension.ExtensionLineOffset = self.dimension_settings['extension_line_offset']
-            dimension.TextGap = self.dimension_settings['text_gap']
-            
-            # Set precision for manufacturing
-            dimension.PrimaryUnitsPrecision = self.dimension_settings['precision']
-            
-            # Override text if specified
             if text_override:
                 dimension.TextOverride = text_override
             
-            # Calculate actual dimension value
-            distance = np.linalg.norm(np.array(end_point) - np.array(start_point))
+            result = self._build_linear_dimension_result(dimension, start_point, end_point, dimension_line_point, text_override)
             
-            dimension_info = {
-                'handle': dimension.Handle,
-                'start_point': start_point,
-                'end_point': end_point,
-                'dimension_line_point': dimension_line_point,
-                'measured_distance': round(distance, self.dimension_settings['precision']),
-                'text_override': text_override,
-                'units': self.dimension_settings['units'],
-                'layer': self.dimension_settings['dimension_layer']
-            }
+            logger.info(f"Linear dimension created: {result['measured_distance']:.{self.dimension_settings['precision']}f} {result['units']}")
             
-            logger.info(f"Linear dimension created: {distance:.{self.dimension_settings['precision']}f} {self.dimension_settings['units']}")
-            
-            return dimension_info
+            return result
             
         except Exception as e:
             logger.error(f"Failed to create linear dimension: {e}")
             return {'error': str(e)}
     
+    def _create_angular_dimension_object(self, vertex_pt: Any, first_pt: Any, second_pt: Any, text_pt: Any) -> Any:
+        """Creates the raw AutoCAD angular dimension object."""
+        return self.model_space.AddDim3PointAngular(vertex_pt, first_pt, second_pt, text_pt)
+
+    def _calculate_angle(self, vertex_point: List[float], first_point: List[float], second_point: List[float]) -> float:
+        """Calculates the angle between two lines."""
+        vec1 = np.array(first_point) - np.array(vertex_point)
+        vec2 = np.array(second_point) - np.array(vertex_point)
+        
+        vec1_norm = vec1 / np.linalg.norm(vec1) if np.linalg.norm(vec1) > 1e-12 else vec1
+        vec2_norm = vec2 / np.linalg.norm(vec2) if np.linalg.norm(vec2) > 1e-12 else vec2
+        
+        cos_angle = np.clip(np.dot(vec1_norm, vec2_norm), -1, 1)
+        return np.degrees(np.arccos(cos_angle))
+
+    def _build_angular_dimension_result(self, ang_dimension: Any, vertex_point: List[float], first_point: List[float], second_point: List[float], text_point: List[float], angle_degrees: float) -> Dict[str, Any]:
+        """Builds the result dictionary for an angular dimension."""
+        return {
+            'handle': ang_dimension.Handle,
+            'vertex_point': vertex_point,
+            'first_point': first_point,
+            'second_point': second_point,
+            'text_point': text_point,
+            'measured_angle': round(angle_degrees, 1),
+            'units': 'degrees',
+            'layer': self.dimension_settings['dimension_layer']
+        }
+
     def create_angular_dimension(self, vertex_point: List[float], first_point: List[float], 
                                second_point: List[float], text_point: List[float]) -> Dict[str, Any]:
         """
@@ -171,51 +206,21 @@ class DimensioningSystem:
         try:
             logger.info(f"Creating angular dimension at vertex {vertex_point}")
             
-            # Ensure layers exist
-            self.setup_dimension_layers()
+            self._prepare_dimensioning_environment(self.dimension_settings['dimension_layer'])
             
-            # Set current layer to dimensions
-            self.doc.ActiveLayer = self.doc.Layers.Item(self.dimension_settings['dimension_layer'])
+            vertex_pt, first_pt, second_pt, text_pt = self._convert_points_to_variant(vertex_point, first_point, second_point, text_point)
             
-            # Convert points to AutoCAD format
-            vertex_pt = win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, vertex_point)
-            first_pt = win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, first_point)
-            second_pt = win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, second_point)
-            text_pt = win32com.client.VARIANT(win32com.client.pythoncom.VT_ARRAY | win32com.client.pythoncom.VT_R8, text_point)
+            ang_dimension = self._create_angular_dimension_object(vertex_pt, first_pt, second_pt, text_pt)
             
-            # Create angular dimension
-            ang_dimension = self.model_space.AddDim3PointAngular(vertex_pt, first_pt, second_pt, text_pt)
+            self._apply_dimension_styles(ang_dimension)
             
-            # Apply dimension settings
-            ang_dimension.TextHeight = self.dimension_settings['text_height']
-            ang_dimension.ArrowheadSize = self.dimension_settings['arrow_size']
+            angle_degrees = self._calculate_angle(vertex_point, first_point, second_point)
             
-            # Calculate actual angle
-            vec1 = np.array(first_point) - np.array(vertex_point)
-            vec2 = np.array(second_point) - np.array(vertex_point)
-            
-            # Normalize vectors
-            vec1_norm = vec1 / np.linalg.norm(vec1) if np.linalg.norm(vec1) > 1e-12 else vec1
-            vec2_norm = vec2 / np.linalg.norm(vec2) if np.linalg.norm(vec2) > 1e-12 else vec2
-            
-            # Calculate angle in degrees
-            cos_angle = np.clip(np.dot(vec1_norm, vec2_norm), -1, 1)
-            angle_degrees = np.degrees(np.arccos(cos_angle))
-            
-            angle_info = {
-                'handle': ang_dimension.Handle,
-                'vertex_point': vertex_point,
-                'first_point': first_point,
-                'second_point': second_point,
-                'text_point': text_point,
-                'measured_angle': round(angle_degrees, 1),
-                'units': 'degrees',
-                'layer': self.dimension_settings['dimension_layer']
-            }
+            result = self._build_angular_dimension_result(ang_dimension, vertex_point, first_point, second_point, text_point, angle_degrees)
             
             logger.info(f"Angular dimension created: {angle_degrees:.1f}°")
             
-            return angle_info
+            return result
             
         except Exception as e:
             logger.error(f"Failed to create angular dimension: {e}")

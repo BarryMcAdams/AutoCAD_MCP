@@ -15,6 +15,71 @@ from .utils import get_autocad_instance
 logger = logging.getLogger(__name__)
 
 
+
+def _create_error_response(error_message: str, error_code: str, details: Dict[str, Any], status_code: int, start_time: float) -> Any:
+    """Creates a standardized JSON error response."""
+    return jsonify({
+        'success': False,
+        'error': error_message,
+        'error_code': error_code,
+        'details': details,
+        'execution_time': time.time() - start_time
+    }), status_code
+
+def _handle_com_error(e: pyautocad.api.COMError, start_time: float) -> Any:
+    """Handles AutoCAD COM errors."""
+    logger.error(f"AutoCAD COM error: {e}")
+    details = {
+        'com_error_code': getattr(e, 'hresult', None),
+        'description': str(e),
+        'suggestion': 'Ensure AutoCAD is running and the drawing is not corrupted'
+    }
+    return _create_error_response('AutoCAD operation failed', 'AUTOCAD_COM_ERROR', details, 500, start_time)
+
+def _handle_connection_error(e: ConnectionError, start_time: float) -> Any:
+    """Handles AutoCAD connection errors."""
+    logger.error(f"AutoCAD connection error: {e}")
+    details = {
+        'description': str(e),
+        'suggestion': 'Start AutoCAD 2025 and ensure it is visible'
+    }
+    return _create_error_response('Cannot connect to AutoCAD', 'AUTOCAD_NOT_CONNECTED', details, 503, start_time)
+
+def _handle_value_error(e: ValueError, start_time: float) -> Any:
+    """Handles validation errors."""
+    logger.warning(f"Validation error: {e}")
+    details = {
+        'validation_error': str(e),
+        'suggestion': 'Check input parameters match API specification'
+    }
+    return _create_error_response('Invalid input parameters', 'INVALID_PARAMETERS', details, 400, start_time)
+
+def _handle_timeout_error(e: TimeoutError, start_time: float) -> Any:
+    """Handles timeout errors."""
+    logger.error(f"Timeout error: {e}")
+    details = {
+        'description': str(e),
+        'suggestion': 'Try reducing complexity or increasing timeout'
+    }
+    return _create_error_response('Operation timed out', 'TIMEOUT_ERROR', details, 408, start_time)
+
+def _handle_generic_error(e: Exception, start_time: float) -> Any:
+    """Handles generic unexpected errors."""
+    logger.exception(f"Unexpected error: {e}")
+    details = {
+        'description': 'An unexpected error occurred',
+        'suggestion': 'Contact support if the problem persists'
+    }
+    return _create_error_response('Internal server error', 'INTERNAL_SERVER_ERROR', details, 500, start_time)
+
+ERROR_HANDLERS = {
+    pyautocad.api.COMError: _handle_com_error,
+    ConnectionError: _handle_connection_error,
+    ValueError: _handle_value_error,
+    TimeoutError: _handle_timeout_error,
+    Exception: _handle_generic_error,
+}
+
 def handle_autocad_errors(func: Callable) -> Callable:
     """
     Decorator to handle AutoCAD COM errors and provide consistent error responses.
@@ -40,73 +105,19 @@ def handle_autocad_errors(func: Callable) -> Callable:
                 
             return result
             
-        except pyautocad.api.COMError as e:
-            logger.error(f"AutoCAD COM error in {func.__name__}: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'AutoCAD operation failed',
-                'error_code': 'AUTOCAD_COM_ERROR',
-                'details': {
-                    'com_error_code': getattr(e, 'hresult', None),
-                    'description': str(e),
-                    'suggestion': 'Ensure AutoCAD is running and the drawing is not corrupted'
-                },
-                'execution_time': time.time() - start_time
-            }), 500
-            
-        except ConnectionError as e:
-            logger.error(f"AutoCAD connection error in {func.__name__}: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Cannot connect to AutoCAD',
-                'error_code': 'AUTOCAD_NOT_CONNECTED',
-                'details': {
-                    'description': str(e),
-                    'suggestion': 'Start AutoCAD 2025 and ensure it is visible'
-                },
-                'execution_time': time.time() - start_time
-            }), 503
-            
-        except ValueError as e:
-            logger.warning(f"Validation error in {func.__name__}: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Invalid input parameters',
-                'error_code': 'INVALID_PARAMETERS',
-                'details': {
-                    'validation_error': str(e),
-                    'suggestion': 'Check input parameters match API specification'
-                },
-                'execution_time': time.time() - start_time
-            }), 400
-            
-        except TimeoutError as e:
-            logger.error(f"Timeout error in {func.__name__}: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Operation timed out',
-                'error_code': 'TIMEOUT_ERROR',
-                'details': {
-                    'description': str(e),
-                    'suggestion': 'Try reducing complexity or increasing timeout'
-                },
-                'execution_time': time.time() - start_time
-            }), 408
-            
         except Exception as e:
-            logger.exception(f"Unexpected error in {func.__name__}: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Internal server error',
-                'error_code': 'INTERNAL_SERVER_ERROR',
-                'details': {
-                    'description': 'An unexpected error occurred',
-                    'suggestion': 'Contact support if the problem persists'
-                },
-                'execution_time': time.time() - start_time
-            }), 500
+            # Find the appropriate handler for the exception
+            handler = ERROR_HANDLERS.get(type(e), _handle_generic_error)
+            # In case of subclassed exceptions, iterate to find a base class handler
+            if handler is _handle_generic_error:
+                for error_type, error_handler in ERROR_HANDLERS.items():
+                    if isinstance(e, error_type):
+                        handler = error_handler
+                        break
+            return handler(e, start_time)
             
     return wrapper
+
 
 
 def validate_json_request(required_fields: list = None) -> Callable:

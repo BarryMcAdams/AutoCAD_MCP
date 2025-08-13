@@ -1141,7 +1141,120 @@ class AutomatedCodeReviewer:
         return scores
 
     def _calculate_best_practices_adherence(self, ast_tree: ast.AST) -> float:
-        return 0.0
+        """
+        Calculate AutoCAD best practices adherence score from AST analysis.
+        
+        Args:
+            ast_tree: AST representation of the code
+            
+        Returns:
+            Score from 0.0 to 10.0 indicating best practices adherence
+        """
+        try:
+            # Initialize scoring components
+            score_components = {
+                'transaction_usage': 0.0,
+                'error_handling': 0.0,
+                'object_disposal': 0.0,
+                'naming_conventions': 0.0,
+                'code_structure': 0.0
+            }
+            
+            # Use AST visitor to analyze AutoCAD patterns
+            autocad_visitor = AutoCADASTVisitor()
+            autocad_visitor.visit(ast_tree)
+            
+            # Transaction usage score (0-2 points)
+            if autocad_visitor.total_com_calls > 0:
+                if autocad_visitor.transaction_usage:
+                    score_components['transaction_usage'] = 2.0
+                elif autocad_visitor.total_com_calls <= 3:
+                    score_components['transaction_usage'] = 1.5  # Minor penalty for small operations
+                else:
+                    score_components['transaction_usage'] = 0.5  # Major penalty for large operations without transactions
+            else:
+                score_components['transaction_usage'] = 2.0  # No COM calls, full score
+            
+            # Error handling score (0-3 points)
+            if autocad_visitor.total_com_calls > 0:
+                coverage_ratio = autocad_visitor.error_handling_coverage / autocad_visitor.total_com_calls
+                score_components['error_handling'] = min(3.0, coverage_ratio * 3.0)
+            else:
+                score_components['error_handling'] = 3.0  # No COM calls, full score
+            
+            # Object disposal score (0-2 points) - check for using statements and explicit disposal
+            disposal_score = 2.0
+            for node in ast.walk(ast_tree):
+                if isinstance(node, ast.With):
+                    # Using statement found - good practice
+                    disposal_score = max(disposal_score, 2.0)
+                elif isinstance(node, ast.Call):
+                    call_name = self._get_call_name(node)
+                    if 'dispose' in call_name.lower() or 'close' in call_name.lower():
+                        disposal_score = max(disposal_score, 1.5)
+            score_components['object_disposal'] = min(2.0, disposal_score)
+            
+            # Naming conventions score (0-2 points)
+            naming_violations = 0
+            total_names = 0
+            for node in ast.walk(ast_tree):
+                if isinstance(node, ast.FunctionDef):
+                    total_names += 1
+                    # Check for snake_case function names
+                    if not node.name.islower() or '--' in node.name:
+                        naming_violations += 1
+                elif isinstance(node, ast.ClassDef):
+                    total_names += 1
+                    # Check for PascalCase class names
+                    if not node.name[0].isupper():
+                        naming_violations += 1
+            
+            if total_names > 0:
+                score_components['naming_conventions'] = 2.0 * (1 - naming_violations / total_names)
+            else:
+                score_components['naming_conventions'] = 2.0
+            
+            # Code structure score (0-1 points) - check for proper function length and complexity
+            function_violations = 0
+            total_functions = 0
+            for node in ast.walk(ast_tree):
+                if isinstance(node, ast.FunctionDef):
+                    total_functions += 1
+                    # Check function length (rough estimate using line numbers)
+                    if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):
+                        func_length = node.end_lineno - node.lineno
+                        if func_length > 50:  # Functions longer than 50 lines
+                            function_violations += 1
+            
+            if total_functions > 0:
+                score_components['code_structure'] = 1.0 * (1 - function_violations / total_functions)
+            else:
+                score_components['code_structure'] = 1.0
+            
+            # Calculate final score (0-10)
+            final_score = sum(score_components.values())
+            
+            logger.debug(f"Best practices score components: {score_components}, final: {final_score:.2f}")
+            return min(10.0, final_score)
+            
+        except Exception as e:
+            logger.error(f"Error calculating best practices adherence: {e}")
+            return 5.0  # Return neutral score on error
+    
+    def _get_call_name(self, node: ast.Call) -> str:
+        """Helper method to extract call name from AST Call node."""
+        if isinstance(node.func, ast.Name):
+            return node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            parts = []
+            current = node.func
+            while isinstance(current, ast.Attribute):
+                parts.append(current.attr)
+                current = current.value
+            if isinstance(current, ast.Name):
+                parts.append(current.id)
+            return ".".join(reversed(parts))
+        return ""
 
     def _calculate_reviewer_confidence(self, report: CodeReviewReport) -> float:
         return 0.95

@@ -287,64 +287,738 @@ class MultiPhysicsGenerator(AbstractAlgorithmGenerator):
     
     # Placeholder methods for matrix assembly and solving
     def _generate_mesh(self, geometry):
-        # Basic mesh generation (placeholder)
-        return geometry, np.arange(len(geometry))
+        """
+        Generate a finite element mesh from geometry.
+        
+        Args:
+            geometry: Array of vertices defining the geometry
+            
+        Returns:
+            Tuple of (nodes, elements) for finite element analysis
+        """
+        nodes = np.array(geometry)
+        n_nodes = len(nodes)
+        
+        # Generate simple tetrahedral elements for 3D mesh
+        # For simplicity, create elements based on node connectivity
+        elements = []
+        
+        if n_nodes >= 4:
+            # Create tetrahedral elements
+            for i in range(0, n_nodes-3, 4):
+                if i+3 < n_nodes:
+                    elements.append([i, i+1, i+2, i+3])
+        else:
+            # Fallback to simple connectivity
+            elements = [list(range(min(4, n_nodes)))]
+        
+        return nodes, np.array(elements)
     
-    def _assemble_stiffness_matrix(self, *args, **kwargs):
-        # Placeholder for stiffness matrix assembly
-        return np.eye(len(args[0]))
+    def _assemble_stiffness_matrix(self, nodes, elements, E, nu):
+        """
+        Assemble the global stiffness matrix for structural analysis.
+        
+        Args:
+            nodes: Array of node coordinates
+            elements: Element connectivity matrix
+            E: Young's modulus
+            nu: Poisson's ratio
+            
+        Returns:
+            Global stiffness matrix
+        """
+        n_nodes = len(nodes)
+        n_dof = n_nodes * 3  # 3 DOF per node (x, y, z)
+        
+        # Initialize global stiffness matrix
+        K_global = sparse.lil_matrix((n_dof, n_dof))
+        
+        # Material matrix for 3D elasticity
+        D = self._compute_material_matrix(E, nu)
+        
+        # Assemble element stiffness matrices
+        for element in elements:
+            if len(element) >= 4:  # Tetrahedral element
+                K_elem = self._compute_element_stiffness(nodes[element], D)
+                
+                # Map element DOF to global DOF
+                for i, node_i in enumerate(element):
+                    for j, node_j in enumerate(element):
+                        for dof_i in range(3):
+                            for dof_j in range(3):
+                                global_i = node_i * 3 + dof_i
+                                global_j = node_j * 3 + dof_j
+                                elem_i = i * 3 + dof_i
+                                elem_j = j * 3 + dof_j
+                                K_global[global_i, global_j] += K_elem[elem_i, elem_j]
+        
+        return K_global.tocsr()
     
-    def _solve_displacement(self, *args, **kwargs):
-        # Placeholder for displacement solving
-        return np.zeros(len(args[0]))
+    def _solve_displacement(self, K, force_vector, fixed_nodes):
+        """
+        Solve for nodal displacements using finite element method.
+        
+        Args:
+            K: Global stiffness matrix
+            force_vector: Applied force vector
+            fixed_nodes: List of fixed/constrained nodes
+            
+        Returns:
+            Displacement vector
+        """
+        n_dof = K.shape[0]
+        
+        # Apply boundary conditions by constraining DOF
+        free_dof = []
+        constrained_dof = []
+        
+        for i in range(n_dof // 3):
+            if i in fixed_nodes:
+                # Fix all DOF for constrained nodes
+                constrained_dof.extend([i*3, i*3+1, i*3+2])
+            else:
+                free_dof.extend([i*3, i*3+1, i*3+2])
+        
+        if len(free_dof) == 0:
+            return np.zeros(n_dof)
+        
+        # Extract free DOF system
+        K_free = K[np.ix_(free_dof, free_dof)]
+        F_free = force_vector[free_dof]
+        
+        # Solve for free DOF displacements
+        try:
+            u_free = spsolve(K_free, F_free)
+        except:
+            # Fallback to least squares if singular
+            u_free = sparse.linalg.lsqr(K_free, F_free)[0]
+        
+        # Assemble full displacement vector
+        displacement = np.zeros(n_dof)
+        displacement[free_dof] = u_free
+        
+        return displacement
     
-    def _compute_stress(self, *args, **kwargs):
-        # Placeholder for stress computation
-        return np.zeros_like(args[0])
+    def _compute_stress(self, displacement, nodes, elements, E, nu):
+        """
+        Compute stress distribution from displacement field.
+        
+        Args:
+            displacement: Nodal displacement vector
+            nodes: Node coordinates
+            elements: Element connectivity
+            E: Young's modulus
+            nu: Poisson's ratio
+            
+        Returns:
+            Stress distribution array
+        """
+        n_elements = len(elements)
+        stress_distribution = np.zeros((n_elements, 6))  # 6 stress components
+        
+        # Material matrix
+        D = self._compute_material_matrix(E, nu)
+        
+        for i, element in enumerate(elements):
+            if len(element) >= 3:
+                # Extract element displacements
+                elem_disp = []
+                for node_id in element:
+                    elem_disp.extend(displacement[node_id*3:(node_id+1)*3])
+                elem_disp = np.array(elem_disp)
+                
+                # Compute strain-displacement matrix
+                B = self._compute_strain_displacement_matrix(nodes[element])
+                
+                # Compute element strain
+                strain = np.dot(B, elem_disp)
+                
+                # Compute element stress
+                stress = np.dot(D, strain)
+                stress_distribution[i] = stress
+        
+        return stress_distribution.flatten()
     
-    def _compute_strain(self, *args, **kwargs):
-        # Placeholder for strain computation
-        return np.zeros_like(args[0])
+    def _compute_strain(self, displacement, nodes, elements):
+        """
+        Compute strain distribution from displacement field.
+        
+        Args:
+            displacement: Nodal displacement vector
+            nodes: Node coordinates  
+            elements: Element connectivity
+            
+        Returns:
+            Strain distribution array
+        """
+        n_elements = len(elements)
+        strain_distribution = np.zeros((n_elements, 6))  # 6 strain components
+        
+        for i, element in enumerate(elements):
+            if len(element) >= 3:
+                # Extract element displacements
+                elem_disp = []
+                for node_id in element:
+                    elem_disp.extend(displacement[node_id*3:(node_id+1)*3])
+                elem_disp = np.array(elem_disp)
+                
+                # Compute strain-displacement matrix
+                B = self._compute_strain_displacement_matrix(nodes[element])
+                
+                # Compute element strain
+                strain = np.dot(B, elem_disp)
+                strain_distribution[i] = strain
+        
+        return strain_distribution.flatten()
     
-    def _assemble_thermal_matrix(self, *args, **kwargs):
-        # Placeholder for thermal matrix assembly
-        return np.eye(len(args[0]))
+    def _assemble_thermal_matrix(self, nodes, elements, thermal_conductivity):
+        """
+        Assemble thermal conductivity matrix for heat transfer analysis.
+        
+        Args:
+            nodes: Node coordinates
+            elements: Element connectivity  
+            thermal_conductivity: Material thermal conductivity
+            
+        Returns:
+            Global thermal conductivity matrix
+        """
+        n_nodes = len(nodes)
+        K_thermal = sparse.lil_matrix((n_nodes, n_nodes))
+        
+        # Assemble element thermal matrices
+        for element in elements:
+            if len(element) >= 3:
+                # Compute element thermal matrix
+                K_elem = self._compute_element_thermal_matrix(nodes[element], thermal_conductivity)
+                
+                # Assemble into global matrix
+                for i, node_i in enumerate(element):
+                    for j, node_j in enumerate(element):
+                        K_thermal[node_i, node_j] += K_elem[i, j]
+        
+        return K_thermal.tocsr()
     
-    def _solve_temperature(self, *args, **kwargs):
-        # Placeholder for temperature solving
-        return np.zeros(len(args[0]))
+    def _solve_temperature(self, K_thermal, temperature_vector):
+        """
+        Solve thermal analysis system for temperature distribution.
+        
+        Args:
+            K_thermal: Thermal conductivity matrix
+            temperature_vector: Boundary temperature conditions
+            
+        Returns:
+            Temperature field
+        """
+        try:
+            # Solve thermal system
+            temperature_field = spsolve(K_thermal, temperature_vector)
+        except:
+            # Fallback to least squares if singular
+            temperature_field = sparse.linalg.lsqr(K_thermal, temperature_vector)[0]
+        
+        return temperature_field
     
-    def _assemble_momentum_matrix(self, *args, **kwargs):
-        # Placeholder for momentum matrix assembly
-        return np.eye(len(args[0]))
+    def _assemble_momentum_matrix(self, nodes, elements, density, viscosity):
+        """
+        Assemble momentum matrix for fluid dynamics simulation.
+        
+        Args:
+            nodes: Node coordinates
+            elements: Element connectivity
+            density: Fluid density
+            viscosity: Fluid viscosity
+            
+        Returns:
+            Momentum matrix for Navier-Stokes equations
+        """
+        n_nodes = len(nodes)
+        n_dof = n_nodes * 2  # 2D velocity components (u, v)
+        A_momentum = sparse.lil_matrix((n_dof, n_dof))
+        
+        # Assemble element momentum matrices
+        for element in elements:
+            if len(element) >= 3:
+                # Compute element momentum matrix (simplified)
+                K_elem = self._compute_element_momentum_matrix(nodes[element], density, viscosity)
+                
+                # Assemble into global matrix
+                for i, node_i in enumerate(element):
+                    for j, node_j in enumerate(element):
+                        for dof_i in range(2):  # u, v components
+                            for dof_j in range(2):
+                                global_i = node_i * 2 + dof_i
+                                global_j = node_j * 2 + dof_j
+                                elem_i = i * 2 + dof_i
+                                elem_j = j * 2 + dof_j
+                                A_momentum[global_i, global_j] += K_elem[elem_i, elem_j]
+        
+        return A_momentum.tocsr()
     
-    def _assemble_continuity_matrix(self, *args, **kwargs):
-        # Placeholder for continuity matrix assembly
-        return np.eye(len(args[0]))
+    def _assemble_continuity_matrix(self, nodes, elements):
+        """
+        Assemble continuity matrix for incompressible flow.
+        
+        Args:
+            nodes: Node coordinates
+            elements: Element connectivity
+            
+        Returns:
+            Continuity matrix for mass conservation
+        """
+        n_nodes = len(nodes)
+        A_continuity = sparse.lil_matrix((n_nodes, n_nodes))
+        
+        # Assemble element continuity matrices
+        for element in elements:
+            if len(element) >= 3:
+                # Compute element continuity matrix
+                C_elem = self._compute_element_continuity_matrix(nodes[element])
+                
+                # Assemble into global matrix
+                for i, node_i in enumerate(element):
+                    for j, node_j in enumerate(element):
+                        A_continuity[node_i, node_j] += C_elem[i, j]
+        
+        return A_continuity.tocsr()
     
-    def _solve_fluid_velocity(self, *args, **kwargs):
-        # Placeholder for fluid velocity solving
-        return np.zeros(len(args[0]))
+    def _solve_fluid_velocity(self, A_momentum, velocity_vector):
+        """
+        Solve for fluid velocity field.
+        
+        Args:
+            A_momentum: Momentum matrix
+            velocity_vector: Boundary velocity conditions
+            
+        Returns:
+            Velocity field solution
+        """
+        try:
+            # Solve momentum equation
+            velocity_field = spsolve(A_momentum, velocity_vector)
+        except:
+            # Fallback to least squares if singular
+            velocity_field = sparse.linalg.lsqr(A_momentum, velocity_vector)[0]
+        
+        return velocity_field
     
-    def _solve_fluid_pressure(self, *args, **kwargs):
-        # Placeholder for fluid pressure solving
-        return np.zeros(len(args[0]))
+    def _solve_fluid_pressure(self, A_continuity, pressure_vector):
+        """
+        Solve for pressure field in fluid flow.
+        
+        Args:
+            A_continuity: Continuity matrix
+            pressure_vector: Pressure boundary conditions
+            
+        Returns:
+            Pressure field solution
+        """
+        try:
+            # Solve pressure equation
+            pressure_field = spsolve(A_continuity, pressure_vector)
+        except:
+            # Fallback to least squares if singular
+            pressure_field = sparse.linalg.lsqr(A_continuity, pressure_vector)[0]
+        
+        return pressure_field
     
-    def _compute_force_vector(self, *args, **kwargs):
-        # Placeholder for force vector computation
-        return np.zeros(len(args[0]))
+    def _compute_force_vector(self, nodes, boundary_conditions):
+        """
+        Compute the force vector from boundary conditions.
+        
+        Args:
+            nodes: Node coordinates
+            boundary_conditions: Applied forces and loads
+            
+        Returns:
+            Global force vector
+        """
+        n_nodes = len(nodes)
+        force_vector = np.zeros(n_nodes * 3)
+        
+        # Apply point loads
+        if 'applied_force' in boundary_conditions:
+            force_magnitude = boundary_conditions['applied_force']
+            
+            # Apply force to top nodes (simplified)
+            for i in range(n_nodes):
+                if nodes[i][2] > 0.5 * np.max(nodes[:, 2]):  # Top half nodes
+                    force_vector[i*3 + 2] = -force_magnitude / n_nodes  # Downward force
+        
+        # Apply distributed loads
+        if 'distributed_load' in boundary_conditions:
+            load_info = boundary_conditions['distributed_load']
+            direction = load_info.get('direction', [0, 0, -1])
+            magnitude = load_info.get('magnitude', 0)
+            
+            for i in range(n_nodes):
+                for j, component in enumerate(direction):
+                    force_vector[i*3 + j] += magnitude * component / n_nodes
+        
+        # Apply pressure loads
+        if 'pressure' in boundary_conditions:
+            pressure = boundary_conditions['pressure']
+            # Apply pressure as normal forces on surface nodes
+            for i in range(n_nodes):
+                # Simplified: apply pressure in negative z direction
+                force_vector[i*3 + 2] += -pressure / n_nodes
+        
+        return force_vector
     
-    def _compute_temperature_vector(self, *args, **kwargs):
-        # Placeholder for temperature vector computation
-        return np.zeros(len(args[0]))
+    def _compute_temperature_vector(self, nodes, boundary_conditions):
+        """
+        Compute temperature boundary condition vector.
+        
+        Args:
+            nodes: Node coordinates
+            boundary_conditions: Thermal boundary conditions
+            
+        Returns:
+            Temperature boundary vector
+        """
+        n_nodes = len(nodes)
+        temp_vector = np.zeros(n_nodes)
+        
+        # Apply temperature boundary conditions
+        if 'hot_side_temperature' in boundary_conditions:
+            hot_temp = boundary_conditions['hot_side_temperature']
+            # Apply to nodes with max x coordinate (hot side)
+            max_x = np.max(nodes[:, 0])
+            for i, node in enumerate(nodes):
+                if abs(node[0] - max_x) < 1e-6:
+                    temp_vector[i] = hot_temp
+        
+        if 'cold_side_temperature' in boundary_conditions:
+            cold_temp = boundary_conditions['cold_side_temperature']
+            # Apply to nodes with min x coordinate (cold side)
+            min_x = np.min(nodes[:, 0])
+            for i, node in enumerate(nodes):
+                if abs(node[0] - min_x) < 1e-6:
+                    temp_vector[i] = cold_temp
+        
+        # Apply heat generation
+        if 'heat_generation' in boundary_conditions:
+            heat_gen = boundary_conditions['heat_generation']
+            temp_vector += heat_gen / n_nodes
+        
+        return temp_vector
     
-    def _compute_velocity_vector(self, *args, **kwargs):
-        # Placeholder for velocity vector computation
-        return np.zeros(len(args[0]))
+    def _compute_velocity_vector(self, nodes, boundary_conditions):
+        """
+        Compute velocity boundary condition vector.
+        
+        Args:
+            nodes: Node coordinates
+            boundary_conditions: Velocity boundary conditions
+            
+        Returns:
+            Velocity boundary vector
+        """
+        n_nodes = len(nodes)
+        velocity_vector = np.zeros(n_nodes * 2)  # u, v components
+        
+        # Apply inlet velocity
+        if 'inlet_velocity' in boundary_conditions:
+            inlet_vel = boundary_conditions['inlet_velocity']
+            # Apply to nodes at minimum x coordinate (inlet)
+            min_x = np.min(nodes[:, 0])
+            for i, node in enumerate(nodes):
+                if abs(node[0] - min_x) < 1e-6:
+                    velocity_vector[i*2] = inlet_vel.get('u', 0)  # u component
+                    velocity_vector[i*2 + 1] = inlet_vel.get('v', 0)  # v component
+        
+        # Apply wall boundary conditions (no-slip)
+        if 'wall_nodes' in boundary_conditions:
+            wall_nodes = boundary_conditions['wall_nodes']
+            for node_id in wall_nodes:
+                if node_id < n_nodes:
+                    velocity_vector[node_id*2] = 0  # u = 0
+                    velocity_vector[node_id*2 + 1] = 0  # v = 0
+        
+        # Apply moving wall conditions
+        if 'moving_wall' in boundary_conditions:
+            wall_vel = boundary_conditions['moving_wall']
+            wall_nodes = wall_vel.get('nodes', [])
+            for node_id in wall_nodes:
+                if node_id < n_nodes:
+                    velocity_vector[node_id*2] = wall_vel.get('u', 0)
+                    velocity_vector[node_id*2 + 1] = wall_vel.get('v', 0)
+        
+        return velocity_vector
     
-    def _compute_pressure_vector(self, *args, **kwargs):
-        # Placeholder for pressure vector computation
-        return np.zeros(len(args[0]))
+    def _compute_pressure_vector(self, nodes, boundary_conditions):
+        """
+        Compute pressure boundary condition vector.
+        
+        Args:
+            nodes: Node coordinates
+            boundary_conditions: Pressure boundary conditions
+            
+        Returns:
+            Pressure boundary vector
+        """
+        n_nodes = len(nodes)
+        pressure_vector = np.zeros(n_nodes)
+        
+        # Apply outlet pressure
+        if 'outlet_pressure' in boundary_conditions:
+            outlet_pressure = boundary_conditions['outlet_pressure']
+            # Apply to nodes at maximum x coordinate (outlet)
+            max_x = np.max(nodes[:, 0])
+            for i, node in enumerate(nodes):
+                if abs(node[0] - max_x) < 1e-6:
+                    pressure_vector[i] = outlet_pressure
+        
+        # Apply pressure loads
+        if 'pressure_loads' in boundary_conditions:
+            loads = boundary_conditions['pressure_loads']
+            for load in loads:
+                node_ids = load.get('nodes', [])
+                pressure = load.get('pressure', 0)
+                for node_id in node_ids:
+                    if node_id < n_nodes:
+                        pressure_vector[node_id] += pressure
+        
+        # Reference pressure (set one node to zero pressure if no other constraints)
+        if 'reference_pressure_node' in boundary_conditions:
+            ref_node = boundary_conditions['reference_pressure_node']
+            if ref_node < n_nodes:
+                pressure_vector[ref_node] = 0
+        elif np.all(pressure_vector == 0):  # No pressure BCs, set reference
+            pressure_vector[0] = 0  # Reference pressure at first node
+        
+        return pressure_vector
+    
+    def _compute_material_matrix(self, E, nu):
+        """
+        Compute the material constitutive matrix for 3D elasticity.
+        
+        Args:
+            E: Young's modulus
+            nu: Poisson's ratio
+            
+        Returns:
+            6x6 material matrix for stress-strain relationship
+        """
+        # 3D elasticity matrix
+        factor = E / ((1 + nu) * (1 - 2*nu))
+        
+        D = np.zeros((6, 6))
+        
+        # Diagonal terms
+        D[0, 0] = D[1, 1] = D[2, 2] = factor * (1 - nu)
+        D[3, 3] = D[4, 4] = D[5, 5] = factor * (1 - 2*nu) / 2
+        
+        # Off-diagonal terms
+        off_diag = factor * nu
+        D[0, 1] = D[0, 2] = D[1, 0] = D[1, 2] = D[2, 0] = D[2, 1] = off_diag
+        
+        return D
+    
+    def _compute_element_stiffness(self, element_nodes, D):
+        """
+        Compute element stiffness matrix for tetrahedral element.
+        
+        Args:
+            element_nodes: Coordinates of element nodes
+            D: Material constitutive matrix
+            
+        Returns:
+            Element stiffness matrix
+        """
+        n_nodes = len(element_nodes)
+        if n_nodes < 4:
+            # Simplified for insufficient nodes
+            return np.eye(n_nodes * 3) * 1e6
+        
+        # Simplified tetrahedral element stiffness
+        # Using constant strain assumption
+        n_dof = n_nodes * 3
+        K_elem = np.zeros((n_dof, n_dof))
+        
+        # Compute element volume and shape function derivatives
+        vol = self._compute_element_volume(element_nodes)
+        
+        if vol > 1e-12:
+            # Simplified stiffness computation
+            # This is a basic implementation - real FEM would use more sophisticated methods
+            B = self._compute_strain_displacement_matrix(element_nodes)
+            K_elem = vol * np.dot(B.T, np.dot(D, B))
+        
+        return K_elem
+    
+    def _compute_element_volume(self, nodes):
+        """
+        Compute the volume of a tetrahedral element.
+        
+        Args:
+            nodes: Array of 4 node coordinates
+            
+        Returns:
+            Element volume
+        """
+        if len(nodes) < 4:
+            return 1.0  # Default volume for simplified elements
+        
+        # Tetrahedral volume calculation
+        v1 = nodes[1] - nodes[0]
+        v2 = nodes[2] - nodes[0]
+        v3 = nodes[3] - nodes[0]
+        
+        volume = abs(np.dot(v1, np.cross(v2, v3))) / 6.0
+        return max(volume, 1e-12)  # Prevent zero volume
+    
+    def _compute_strain_displacement_matrix(self, nodes):
+        """
+        Compute the strain-displacement matrix (B matrix) for tetrahedral element.
+        
+        Args:
+            nodes: Element node coordinates
+            
+        Returns:
+            Strain-displacement matrix
+        """
+        n_nodes = len(nodes)
+        B = np.zeros((6, n_nodes * 3))
+        
+        # Simplified B matrix for constant strain element
+        # Real implementation would compute shape function derivatives
+        for i in range(min(n_nodes, 4)):
+            # x-displacement derivatives
+            B[0, i*3] = 1.0 / n_nodes      # dN/dx
+            B[3, i*3+1] = 1.0 / n_nodes    # dN/dy for shear
+            B[4, i*3+2] = 1.0 / n_nodes    # dN/dz for shear
+            
+            # y-displacement derivatives  
+            B[1, i*3+1] = 1.0 / n_nodes    # dN/dy
+            B[3, i*3] = 1.0 / n_nodes      # dN/dx for shear
+            B[5, i*3+2] = 1.0 / n_nodes    # dN/dz for shear
+            
+            # z-displacement derivatives
+            B[2, i*3+2] = 1.0 / n_nodes    # dN/dz
+            B[4, i*3] = 1.0 / n_nodes      # dN/dx for shear
+            B[5, i*3+1] = 1.0 / n_nodes    # dN/dy for shear
+        
+        return B
+    
+    def _compute_element_thermal_matrix(self, element_nodes, thermal_conductivity):
+        """
+        Compute element thermal conductivity matrix.
+        
+        Args:
+            element_nodes: Element node coordinates
+            thermal_conductivity: Material thermal conductivity
+            
+        Returns:
+            Element thermal matrix
+        """
+        n_nodes = len(element_nodes)
+        K_elem = np.zeros((n_nodes, n_nodes))
+        
+        # Simplified thermal element matrix
+        # Real implementation would use shape function derivatives
+        element_size = 1.0  # Simplified element characteristic length
+        
+        if n_nodes >= 3:
+            # Compute element area/volume for scaling
+            if n_nodes == 3:  # Triangle
+                v1 = element_nodes[1] - element_nodes[0]
+                v2 = element_nodes[2] - element_nodes[0]
+                area = 0.5 * np.linalg.norm(np.cross(v1, v2))
+                element_size = area
+            elif n_nodes >= 4:  # Tetrahedron
+                element_size = self._compute_element_volume(element_nodes)
+        
+        # Simple finite difference approximation
+        base_conductance = thermal_conductivity * element_size
+        
+        for i in range(n_nodes):
+            for j in range(n_nodes):
+                if i == j:
+                    K_elem[i, j] = base_conductance * (n_nodes - 1)
+                else:
+                    K_elem[i, j] = -base_conductance
+        
+        return K_elem
+    
+    def _compute_element_momentum_matrix(self, element_nodes, density, viscosity):
+        """
+        Compute element momentum matrix for fluid flow.
+        
+        Args:
+            element_nodes: Element node coordinates
+            density: Fluid density
+            viscosity: Fluid viscosity
+            
+        Returns:
+            Element momentum matrix
+        """
+        n_nodes = len(element_nodes)
+        n_dof = n_nodes * 2  # 2 velocity components per node
+        K_elem = np.zeros((n_dof, n_dof))
+        
+        if n_nodes >= 3:
+            # Compute element area for scaling
+            if n_nodes == 3:  # Triangle
+                v1 = element_nodes[1] - element_nodes[0]
+                v2 = element_nodes[2] - element_nodes[0]
+                area = 0.5 * abs(np.cross(v1[:2], v2[:2]))  # 2D cross product
+            else:
+                area = 1.0  # Default for non-triangular elements
+            
+            # Simplified momentum matrix (viscous + convective terms)
+            base_visc = viscosity * area
+            base_conv = density * area * 0.1  # Simplified convection term
+            
+            for i in range(n_nodes):
+                for j in range(n_nodes):
+                    # Viscous terms (Laplacian)
+                    if i == j:
+                        K_elem[i*2, j*2] = base_visc * 2  # u-u coupling
+                        K_elem[i*2+1, j*2+1] = base_visc * 2  # v-v coupling
+                    else:
+                        K_elem[i*2, j*2] = -base_visc / n_nodes  # u-u coupling
+                        K_elem[i*2+1, j*2+1] = -base_visc / n_nodes  # v-v coupling
+                    
+                    # Simplified convective terms
+                    K_elem[i*2, j*2] += base_conv / n_nodes
+                    K_elem[i*2+1, j*2+1] += base_conv / n_nodes
+        
+        return K_elem
+    
+    def _compute_element_continuity_matrix(self, element_nodes):
+        """
+        Compute element continuity matrix for mass conservation.
+        
+        Args:
+            element_nodes: Element node coordinates
+            
+        Returns:
+            Element continuity matrix
+        """
+        n_nodes = len(element_nodes)
+        C_elem = np.zeros((n_nodes, n_nodes))
+        
+        if n_nodes >= 3:
+            # Compute element area for scaling
+            if n_nodes == 3:  # Triangle
+                v1 = element_nodes[1] - element_nodes[0]
+                v2 = element_nodes[2] - element_nodes[0]
+                area = 0.5 * abs(np.cross(v1[:2], v2[:2]))  # 2D cross product
+            else:
+                area = 1.0
+            
+            # Simplified continuity matrix (divergence operator)
+            base_div = area / n_nodes
+            
+            for i in range(n_nodes):
+                for j in range(n_nodes):
+                    if i == j:
+                        C_elem[i, j] = base_div * (n_nodes - 1)
+                    else:
+                        C_elem[i, j] = -base_div
+        
+        return C_elem
 
 # Example usage demonstration
 def _example_usage():
