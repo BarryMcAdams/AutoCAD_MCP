@@ -806,3 +806,22 @@ def create_success_response(
         response["execution_time"] = execution_time
 
     return response
+
+
+def calculate_distortion_metrics(vertices, triangles, uv_coords) -> Dict[str, Any]:
+    """
+    Calculate mesh distortion metrics for surface unfolding quality assessment.
+    
+    Args:
+        vertices: Nx3 array of 3D vertex coordinates
+        triangles: Mx3 array of triangle vertex indices  
+        uv_coords: Nx2 array of UV coordinates from LSCM solution
+        
+    Returns:
+        Dictionary containing distortion metrics and analysis
+    """
+    from .algorithms.lscm import LSCMSolver
+    
+    # Create temporary LSCM solver to access distortion calculation method
+    solver = LSCMSolver(vertices, triangles)
+    return solver.calculate_distortion_metrics(uv_coords)

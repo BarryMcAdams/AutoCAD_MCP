@@ -867,7 +867,7 @@ class AutomatedCodeReviewer:
                             continue
                     except (SyntaxError, AttributeError):
                         # If parsing fails, it's likely unsafe eval usage
-                        pass
+                        logger.debug(f"Could not parse eval() usage at line {finding['line']} - treating as unsafe")
 
                 findings.append(
                     ReviewFinding(

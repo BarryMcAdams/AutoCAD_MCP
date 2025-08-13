@@ -369,3 +369,136 @@ def optimize_mesh_for_lscm(vertices: np.ndarray, triangles: np.ndarray,
     logger.info(f"Mesh optimized: {len(optimized_vertices)} vertices, {len(optimized_triangles)} triangles")
     
     return optimized_vertices, optimized_triangles
+
+
+def generate_simple_mesh(rows: int = 5, cols: int = 5) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate a simple rectangular mesh for testing purposes.
+    
+    Args:
+        rows: Number of rows in the mesh grid
+        cols: Number of columns in the mesh grid
+        
+    Returns:
+        Tuple of (vertices, triangles) arrays
+    """
+    logger.info(f"Generating simple {rows}x{cols} test mesh")
+    
+    # Generate grid vertices
+    vertices = []
+    for i in range(rows):
+        for j in range(cols):
+            x = float(j) / (cols - 1)
+            y = float(i) / (rows - 1)
+            z = 0.1 * np.sin(2 * np.pi * x) * np.sin(2 * np.pi * y)  # Small waves
+            vertices.append([x, y, z])
+    
+    vertices = np.array(vertices)
+    
+    # Generate triangle connectivity
+    triangles = []
+    for i in range(rows - 1):
+        for j in range(cols - 1):
+            # Current quad vertices
+            bottom_left = i * cols + j
+            bottom_right = i * cols + (j + 1)
+            top_left = (i + 1) * cols + j
+            top_right = (i + 1) * cols + (j + 1)
+            
+            # Two triangles per quad
+            triangles.append([bottom_left, bottom_right, top_left])
+            triangles.append([bottom_right, top_right, top_left])
+    
+    triangles = np.array(triangles)
+    
+    logger.info(f"Generated mesh: {len(vertices)} vertices, {len(triangles)} triangles")
+    return vertices, triangles
+
+
+def validate_mesh(vertices: np.ndarray, triangles: np.ndarray) -> Dict[str, Any]:
+    """
+    Comprehensive mesh validation function.
+    
+    Args:
+        vertices: Nx3 array of vertex coordinates
+        triangles: Mx3 array of triangle indices
+        
+    Returns:
+        Dictionary containing validation results and metrics
+    """
+    logger.info("Starting comprehensive mesh validation")
+    
+    validation_result = {
+        'basic_checks': {},
+        'manifold_validation': {},
+        'geometry_metrics': {},
+        'overall_status': 'unknown'
+    }
+    
+    try:
+        # Basic checks
+        n_vertices = len(vertices)
+        n_triangles = len(triangles)
+        
+        validation_result['basic_checks'] = {
+            'n_vertices': n_vertices,
+            'n_triangles': n_triangles,
+            'vertices_shape_valid': vertices.shape[1] == 3,
+            'triangles_shape_valid': triangles.shape[1] == 3,
+            'indices_in_range': np.all(triangles >= 0) and np.all(triangles < n_vertices),
+            'no_empty_mesh': n_vertices > 0 and n_triangles > 0
+        }
+        
+        # Manifold validation
+        validation_result['manifold_validation'] = validate_mesh_manifold(vertices, triangles)
+        
+        # Geometry metrics
+        if n_vertices > 0 and n_triangles > 0:
+            # Bounding box
+            bbox_min = np.min(vertices, axis=0)
+            bbox_max = np.max(vertices, axis=0)
+            bbox_size = bbox_max - bbox_min
+            
+            # Triangle areas
+            triangle_areas = []
+            for triangle in triangles:
+                v0, v1, v2 = vertices[triangle]
+                edge1 = v1 - v0
+                edge2 = v2 - v0
+                area = np.linalg.norm(np.cross(edge1, edge2)) / 2.0
+                triangle_areas.append(area)
+            
+            triangle_areas = np.array(triangle_areas)
+            
+            validation_result['geometry_metrics'] = {
+                'bbox_min': bbox_min.tolist(),
+                'bbox_max': bbox_max.tolist(),
+                'bbox_size': bbox_size.tolist(),
+                'total_surface_area': np.sum(triangle_areas),
+                'min_triangle_area': np.min(triangle_areas),
+                'max_triangle_area': np.max(triangle_areas),
+                'mean_triangle_area': np.mean(triangle_areas),
+                'area_std': np.std(triangle_areas)
+            }
+        
+        # Overall assessment
+        basic_valid = all(validation_result['basic_checks'].values())
+        manifold_suitable = validation_result['manifold_validation'].get('suitable_for_lscm', False)
+        
+        if basic_valid and manifold_suitable:
+            validation_result['overall_status'] = 'valid'
+            logger.info("✅ Mesh passed comprehensive validation")
+        elif basic_valid:
+            validation_result['overall_status'] = 'basic_valid'
+            logger.warning("⚠️ Mesh has basic validity but manifold issues")
+        else:
+            validation_result['overall_status'] = 'invalid'
+            logger.error("❌ Mesh failed basic validation checks")
+        
+        return validation_result
+        
+    except Exception as e:
+        logger.error(f"Mesh validation failed with error: {e}")
+        validation_result['error'] = str(e)
+        validation_result['overall_status'] = 'error'
+        return validation_result
