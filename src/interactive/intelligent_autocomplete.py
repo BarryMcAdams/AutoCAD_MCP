@@ -40,8 +40,8 @@ except ImportError:
     HAS_SKLEARN = False
 
 # Import core components
-from ..inspection.object_inspector import ObjectInspector
-from ..inspection.method_discoverer import MethodDiscoverer
+from src.inspection.object_inspector import ObjectInspector
+from src.inspection.method_discoverer import MethodDiscoverer
 from .secure_evaluator import safe_eval, SecureEvaluationError
 
 logger = logging.getLogger(__name__)

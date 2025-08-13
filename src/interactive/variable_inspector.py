@@ -25,9 +25,9 @@ import traceback
 import ast
 
 # Import core components
-from ..inspection.object_inspector import ObjectInspector, InspectionDepth
-from ..inspection.property_analyzer import PropertyAnalyzer
-from ..inspection.method_discoverer import MethodDiscoverer
+from src.inspection.object_inspector import ObjectInspector, InspectionDepth
+from src.inspection.property_analyzer import PropertyAnalyzer
+from src.inspection.method_discoverer import MethodDiscoverer
 from .secure_evaluator import safe_eval, SecureEvaluationError
 
 logger = logging.getLogger(__name__)

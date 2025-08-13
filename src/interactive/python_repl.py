@@ -16,9 +16,9 @@ from io import StringIO
 import contextlib
 
 # Import enhanced AutoCAD and security components
-from ..enhanced_autocad.compatibility_layer import Autocad
-from ..mcp_integration.security_manager import SecurityManager
-from ..mcp_integration.context_manager import ContextManager
+from src.enhanced_autocad.compatibility_layer import Autocad
+from src.mcp_integration.security_manager import SecurityManager
+from src.mcp_integration.context_manager import ContextManager
 
 logger = logging.getLogger(__name__)
 

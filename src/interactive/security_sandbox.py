@@ -18,7 +18,7 @@ from enum import Enum
 import re
 
 # Import base security manager
-from ..mcp_integration.security_manager import SecurityManager, SecurityError
+from src.mcp_integration.security_manager import SecurityManager, SecurityError
 
 logger = logging.getLogger(__name__)
 

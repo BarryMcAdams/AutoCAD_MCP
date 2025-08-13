@@ -27,9 +27,9 @@ except ImportError:
     RESOURCE_AVAILABLE = False
 
 # Import monitoring and inspection components
-from ..enhanced_autocad.performance_monitor import PerformanceMonitor, OperationMetrics
-from ..inspection.object_inspector import ObjectInspector
-from ..inspection.method_discoverer import MethodDiscoverer
+from src.enhanced_autocad.performance_monitor import PerformanceMonitor, OperationMetrics
+from src.inspection.object_inspector import ObjectInspector
+from src.inspection.method_discoverer import MethodDiscoverer
 
 logger = logging.getLogger(__name__)
 

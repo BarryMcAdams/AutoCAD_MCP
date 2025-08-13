@@ -25,7 +25,7 @@ from collections import defaultdict, deque
 
 # Import core debugging components
 from .debugger import Breakpoint, BreakpointType, AutoCADDebugger
-from ..inspection.object_inspector import ObjectInspector, InspectionDepth
+from src.inspection.object_inspector import ObjectInspector, InspectionDepth
 from .secure_evaluator import safe_eval, SecureEvaluationError
 
 logger = logging.getLogger(__name__)

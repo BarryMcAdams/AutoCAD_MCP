@@ -19,12 +19,12 @@ from mcp.server import FastMCP
 from mcp.types import Tool
 
 # Import enhanced AutoCAD functionality and local modules
-from ..enhanced_autocad.compatibility_layer import Autocad
-from ..inspection.intellisense_provider import IntelliSenseProvider
-from ..inspection.method_discoverer import MethodDiscoverer
-from ..inspection.object_inspector import InspectionDepth, ObjectInspector
-from ..inspection.property_analyzer import PropertyAnalyzer
-from ..interactive.secure_evaluator import SecureExpressionEvaluator
+from src.enhanced_autocad.compatibility_layer import Autocad
+from src.inspection.intellisense_provider import IntelliSenseProvider
+from src.inspection.method_discoverer import MethodDiscoverer
+from src.inspection.object_inspector import InspectionDepth, ObjectInspector
+from src.inspection.property_analyzer import PropertyAnalyzer
+from src.interactive.secure_evaluator import SecureExpressionEvaluator
 from .context_manager import ContextManager
 from .security_manager import SecurityManager
 
@@ -174,7 +174,7 @@ class EnhancedMCPServer:
     def _get_python_repl(self):
         """Get Python REPL instance with lazy initialization."""
         if not self.python_repl:
-            from ..interactive.python_repl import PythonREPL
+            from src.interactive.python_repl import PythonREPL
 
             self.python_repl = PythonREPL(
                 autocad_wrapper=self.autocad_wrapper,
@@ -186,7 +186,7 @@ class EnhancedMCPServer:
     def _get_execution_engine(self):
         """Get execution engine instance with lazy initialization."""
         if not self.execution_engine:
-            from ..interactive.execution_engine import ExecutionEngine
+            from src.interactive.execution_engine import ExecutionEngine
 
             self.execution_engine = ExecutionEngine(security_manager=self.security_manager)
         return self.execution_engine
@@ -194,7 +194,7 @@ class EnhancedMCPServer:
     def _get_debugger(self):
         """Get debugger instance with lazy initialization."""
         if not self.debugger:
-            from ..interactive.debugger import AutoCADDebugger
+            from src.interactive.debugger import AutoCADDebugger
 
             self.debugger = AutoCADDebugger(
                 object_inspector=self.object_inspector,
@@ -205,7 +205,7 @@ class EnhancedMCPServer:
     def _get_error_diagnostics(self):
         """Get error diagnostics instance with lazy initialization."""
         if not self.error_diagnostics:
-            from ..interactive.error_diagnostics import ErrorDiagnostics
+            from src.interactive.error_diagnostics import ErrorDiagnostics
 
             self.error_diagnostics = ErrorDiagnostics(
                 object_inspector=self.object_inspector, error_handler=None
@@ -215,7 +215,7 @@ class EnhancedMCPServer:
     def _get_performance_analyzer(self):
         """Get performance analyzer instance with lazy initialization."""
         if not self.performance_analyzer:
-            from ..interactive.performance_analyzer import PerformanceAnalyzer
+            from src.interactive.performance_analyzer import PerformanceAnalyzer
 
             self.performance_analyzer = PerformanceAnalyzer(object_inspector=self.object_inspector)
         return self.performance_analyzer
@@ -223,7 +223,7 @@ class EnhancedMCPServer:
     def _get_autolisp_generator(self):
         """Get AutoLISP generator instance with lazy initialization."""
         if not self.autolisp_generator:
-            from ..code_generation.autolisp_generator import AutoLISPGenerator
+            from src.code_generation.autolisp_generator import AutoLISPGenerator
 
             self.autolisp_generator = AutoLISPGenerator()
         return self.autolisp_generator
@@ -231,7 +231,7 @@ class EnhancedMCPServer:
     def _get_python_generator(self):
         """Get Python generator instance with lazy initialization."""
         if not self.python_generator:
-            from ..code_generation.python_generator import PythonGenerator
+            from src.code_generation.python_generator import PythonGenerator
 
             self.python_generator = PythonGenerator()
         return self.python_generator
@@ -239,7 +239,7 @@ class EnhancedMCPServer:
     def _get_vba_generator(self):
         """Get VBA generator instance with lazy initialization."""
         if not self.vba_generator:
-            from ..code_generation.vba_generator import VBAGenerator
+            from src.code_generation.vba_generator import VBAGenerator
 
             self.vba_generator = VBAGenerator()
         return self.vba_generator
@@ -247,7 +247,7 @@ class EnhancedMCPServer:
     def _get_template_manager(self):
         """Get template manager instance with lazy initialization."""
         if not self.template_manager:
-            from ..code_generation.template_manager import TemplateManager
+            from src.code_generation.template_manager import TemplateManager
 
             self.template_manager = TemplateManager()
         return self.template_manager
@@ -255,7 +255,7 @@ class EnhancedMCPServer:
     def _get_language_coordinator(self):
         """Get language coordinator instance with lazy initialization."""
         if not self.language_coordinator:
-            from ..code_generation.language_coordinator import LanguageCoordinator
+            from src.code_generation.language_coordinator import LanguageCoordinator
 
             self.language_coordinator = LanguageCoordinator()
         return self.language_coordinator
@@ -263,7 +263,7 @@ class EnhancedMCPServer:
     def _get_validation_engine(self):
         """Get validation engine instance with lazy initialization."""
         if not self.validation_engine:
-            from ..code_generation.validation_engine import ValidationEngine
+            from src.code_generation.validation_engine import ValidationEngine
 
             self.validation_engine = ValidationEngine()
         return self.validation_engine
@@ -271,7 +271,7 @@ class EnhancedMCPServer:
     def _get_test_framework(self):
         """Get test framework instance with lazy initialization."""
         if not self.test_framework:
-            from ..testing.autocad_test_framework import AutoCADTestFramework
+            from src.testing.autocad_test_framework import AutoCADTestFramework
 
             self.test_framework = AutoCADTestFramework(mock_mode=True)
         return self.test_framework
@@ -279,7 +279,7 @@ class EnhancedMCPServer:
     def _get_test_generator(self):
         """Get test generator instance with lazy initialization."""
         if not self.test_generator:
-            from ..testing.test_generators import TestGenerator
+            from src.testing.test_generators import TestGenerator
 
             self.test_generator = TestGenerator()
         return self.test_generator
@@ -287,7 +287,7 @@ class EnhancedMCPServer:
     def _get_performance_tester(self):
         """Get performance tester instance with lazy initialization."""
         if not self.performance_tester:
-            from ..testing.performance_tester import PerformanceTester
+            from src.testing.performance_tester import PerformanceTester
 
             self.performance_tester = PerformanceTester()
         return self.performance_tester
@@ -295,7 +295,7 @@ class EnhancedMCPServer:
     def _get_project_scaffolder(self):
         """Get project scaffolder instance with lazy initialization."""
         if not self.project_scaffolder:
-            from ..project_templates.project_scaffolder import ProjectScaffolder
+            from src.project_templates.project_scaffolder import ProjectScaffolder
 
             self.project_scaffolder = ProjectScaffolder()
         return self.project_scaffolder
@@ -303,7 +303,7 @@ class EnhancedMCPServer:
     def _get_dependency_manager(self):
         """Get dependency manager instance with lazy initialization."""
         if not self.dependency_manager:
-            from ..project_templates.dependency_manager import DependencyManager
+            from src.project_templates.dependency_manager import DependencyManager
 
             self.dependency_manager = DependencyManager()
         return self.dependency_manager
@@ -311,7 +311,7 @@ class EnhancedMCPServer:
     def _get_documentation_generator(self):
         """Get documentation generator instance with lazy initialization."""
         if not self.documentation_generator:
-            from ..project_templates.documentation_generator import DocumentationGenerator
+            from src.project_templates.documentation_generator import DocumentationGenerator
 
             self.documentation_generator = DocumentationGenerator()
         return self.documentation_generator
@@ -2204,7 +2204,7 @@ Type your Python code and press Enter to execute."""
                 Information about CI/CD setup and configuration files created
             """
             try:
-                from ..testing.ci_integration import CIConfiguration, CIIntegration
+                from src.testing.ci_integration import CIConfiguration, CIIntegration
 
                 ci_integration = CIIntegration()
                 ci_config = CIConfiguration(
@@ -2258,7 +2258,7 @@ Type your Python code and press Enter to execute."""
                 Information about the created project and next steps
             """
             try:
-                from ..project_templates.project_scaffolder import ProjectScaffoldConfig
+                from src.project_templates.project_scaffolder import ProjectScaffoldConfig
 
                 scaffolder = self._get_project_scaffolder()
 

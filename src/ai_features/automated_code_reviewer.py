@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 # Import existing analysis components
-from ..interactive.code_refactoring import CodeRefactoringEngine, RefactoringSuggestion
+from src.interactive.code_refactoring import CodeRefactoringEngine, RefactoringSuggestion
 from .error_prediction_engine import IntelligentErrorPredictor
 
 logger = logging.getLogger(__name__)

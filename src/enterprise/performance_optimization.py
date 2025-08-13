@@ -47,8 +47,8 @@ except ImportError:
     HAS_MEMCACHE = False
 
 # Import existing components
-from ..enhanced_autocad.performance_monitor import PerformanceMonitor
-from ..enhanced_autocad.error_handler import ErrorHandler
+from src.enhanced_autocad.performance_monitor import PerformanceMonitor
+from src.enhanced_autocad.error_handler import ErrorHandler
 from .monitoring_dashboard import AdvancedMonitoringDashboard
 
 logger = logging.getLogger(__name__)

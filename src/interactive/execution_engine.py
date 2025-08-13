@@ -24,9 +24,9 @@ except ImportError:
     RESOURCE_AVAILABLE = False
 
 # Import security and monitoring components
-from ..mcp_integration.security_manager import SecurityManager, SecurityError
-from ..enhanced_autocad.performance_monitor import PerformanceMonitor
-from ..enhanced_autocad.error_handler import ErrorHandler, ErrorCategory
+from src.mcp_integration.security_manager import SecurityManager, SecurityError
+from src.enhanced_autocad.performance_monitor import PerformanceMonitor
+from src.enhanced_autocad.error_handler import ErrorHandler, ErrorCategory
 
 logger = logging.getLogger(__name__)
 

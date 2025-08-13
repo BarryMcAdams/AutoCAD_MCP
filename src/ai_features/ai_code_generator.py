@@ -42,10 +42,10 @@ except ImportError:
     Pipeline = None
 
 # Import existing template system
-from ..project_templates.template_engine import TemplateEngine
-from ..code_generation.python_generator import PythonGenerator
-from ..code_generation.autolisp_generator import AutoLISPGenerator
-from ..code_generation.vba_generator import VBAGenerator
+from src.project_templates.template_engine import TemplateEngine
+from src.code_generation.python_generator import PythonGenerator
+from src.code_generation.autolisp_generator import AutoLISPGenerator
+from src.code_generation.vba_generator import VBAGenerator
 
 # Import AI features
 from .natural_language_processor import AutoCADNLPEngine, NLCommand, IntentType, EntityType

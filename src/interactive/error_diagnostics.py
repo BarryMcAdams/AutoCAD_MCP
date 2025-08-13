@@ -18,10 +18,10 @@ import inspect
 import sys
 
 # Import inspection and interactive components
-from ..inspection.object_inspector import ObjectInspector, InspectionDepth
-from ..inspection.property_analyzer import PropertyAnalyzer
-from ..enhanced_autocad.error_handler import ErrorHandler, ErrorCategory
-from ..enhanced_autocad.performance_monitor import PerformanceMonitor
+from src.inspection.object_inspector import ObjectInspector, InspectionDepth
+from src.inspection.property_analyzer import PropertyAnalyzer
+from src.enhanced_autocad.error_handler import ErrorHandler, ErrorCategory
+from src.enhanced_autocad.performance_monitor import PerformanceMonitor
 
 logger = logging.getLogger(__name__)
 

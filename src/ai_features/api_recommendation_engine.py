@@ -40,9 +40,9 @@ except ImportError:
     HAS_SKLEARN = False
 
 # Import existing components
-from ..inspection.object_inspector import ObjectInspector
-from ..inspection.method_discoverer import MethodDiscoverer
-from ..enhanced_autocad.performance_monitor import PerformanceMonitor
+from src.inspection.object_inspector import ObjectInspector
+from src.inspection.method_discoverer import MethodDiscoverer
+from src.enhanced_autocad.performance_monitor import PerformanceMonitor
 
 logger = logging.getLogger(__name__)
 

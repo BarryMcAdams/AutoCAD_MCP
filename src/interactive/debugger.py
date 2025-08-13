@@ -19,13 +19,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set, Union
 
-from ..enhanced_autocad.error_handler import ErrorHandler
-from ..enhanced_autocad.performance_monitor import PerformanceMonitor
-from ..inspection.method_discoverer import MethodDiscoverer
+from src.enhanced_autocad.error_handler import ErrorHandler
+from src.enhanced_autocad.performance_monitor import PerformanceMonitor
+from src.inspection.method_discoverer import MethodDiscoverer
 
 # Import inspection and interactive components
-from ..inspection.object_inspector import InspectionDepth, ObjectInspector
-from ..inspection.property_analyzer import PropertyAnalyzer
+from src.inspection.object_inspector import InspectionDepth, ObjectInspector
+from src.inspection.property_analyzer import PropertyAnalyzer
 from .secure_evaluator import SecureEvaluationError, safe_eval
 
 logger = logging.getLogger(__name__)
