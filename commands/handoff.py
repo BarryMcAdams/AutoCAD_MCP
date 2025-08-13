@@ -190,7 +190,7 @@ class HandoffCommand:
             return {'current_branch': 'unknown', 'status': 'unknown'}
     
     def _get_roadmap_status(self):
-        """Get current roadmap status and milestones."""
+        """Get current roadmap status and milestones with phase tracking."""
         roadmap_paths = [
             os.path.join(self.project_root, 'docs', 'development', 'roadmap.md'),
             os.path.join(self.project_root, 'ROADMAP.md')
@@ -200,13 +200,50 @@ class HandoffCommand:
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    # Extract key milestones or status
+                    
+                    # Extract current phase
+                    current_phase = "Unknown Phase"
+                    phase_status = "Unknown Status"
+                    
                     lines = content.split('\n')
-                    status_lines = [line for line in lines if '✅' in line or '🔄' in line or '❌' in line]
+                    for line in lines:
+                        if 'CURRENT PRIORITY' in line and 'Phase 0' in line:
+                            current_phase = "Phase 0: Emergency Foundation Repairs"
+                            phase_status = "🔴 CRITICAL - Active"
+                        elif 'Current Phase' in line and 'Phase 1' in line:
+                            current_phase = "Phase 1: Consolidation and Expansion"
+                            phase_status = "🟡 Active"
+                    
+                    # Extract status markers and completion criteria
+                    status_lines = [line for line in lines if '✅' in line or '🔄' in line or '❌' in line or '🔴' in line]
+                    completion_criteria = []
+                    
+                    in_criteria_section = False
+                    for line in lines:
+                        if 'Phase 0 Completion Criteria' in line:
+                            in_criteria_section = True
+                            continue
+                        elif in_criteria_section and line.startswith('- ✅'):
+                            completion_criteria.append(line.strip())
+                        elif in_criteria_section and line.startswith('##'):
+                            break
+                    
+                    result = f"**Current Phase**: {current_phase}\n"
+                    result += f"**Phase Status**: {phase_status}\n\n"
+                    
+                    if completion_criteria:
+                        result += "**Phase 0 Completion Criteria**:\n"
+                        for criterion in completion_criteria:
+                            result += f"  {criterion}\n"
+                        result += "\n"
+                    
                     if status_lines:
-                        return '\n'.join(status_lines[:5])  # First 5 status items
-                    else:
-                        return "Roadmap exists but no status markers found"
+                        result += "**Status Indicators**:\n"
+                        for status in status_lines[:5]:  # First 5 status items
+                            result += f"  {status}\n"
+                    
+                    return result
+                    
             except FileNotFoundError:
                 continue
         

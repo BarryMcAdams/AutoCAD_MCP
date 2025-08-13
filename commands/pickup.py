@@ -122,7 +122,7 @@ class PickupCommand:
             return {'exists': False, 'message': 'No project tracker found'}
     
     def _read_roadmap(self) -> Dict[str, Any]:
-        """Parse roadmap for strategic priorities."""
+        """Parse roadmap for strategic priorities and current phase tracking."""
         roadmap_paths = [
             os.path.join(self.project_root, 'docs', 'development', 'roadmap.md'),
             os.path.join(self.project_root, 'ROADMAP.md')
@@ -132,16 +132,62 @@ class PickupCommand:
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     content = f.read()
+                    
+                    # Extract current phase and completion status
+                    phase_info = self._extract_roadmap_phase(content)
+                    completion_criteria = self._extract_completion_criteria(content)
+                    
                     return {
                         'exists': True,
                         'content': content,
                         'path': path,
-                        'last_modified': os.path.getmtime(path)
+                        'last_modified': os.path.getmtime(path),
+                        'current_phase': phase_info,
+                        'completion_criteria': completion_criteria
                     }
             except FileNotFoundError:
                 continue
         
         return {'exists': False, 'message': 'No roadmap found'}
+    
+    def _extract_roadmap_phase(self, content: str) -> Dict[str, Any]:
+        """Extract current phase information from roadmap content."""
+        lines = content.split('\n')
+        current_phase = 'unknown'
+        phase_status = 'unknown'
+        
+        for line in lines:
+            if 'CURRENT PRIORITY' in line and 'Phase 0' in line:
+                current_phase = 'Phase 0: Emergency Foundation Repairs'
+                phase_status = 'critical'
+            elif 'Current Phase' in line and 'Phase 1' in line:
+                current_phase = 'Phase 1: Consolidation and Expansion'
+                phase_status = 'active'
+            elif 'Phase 2' in line:
+                current_phase = 'Phase 2: Advanced AI Integration'
+                phase_status = 'planned'
+        
+        return {
+            'phase': current_phase,
+            'status': phase_status
+        }
+    
+    def _extract_completion_criteria(self, content: str) -> List[str]:
+        """Extract completion criteria from roadmap."""
+        criteria = []
+        lines = content.split('\n')
+        in_criteria_section = False
+        
+        for line in lines:
+            if 'Phase 0 Completion Criteria' in line:
+                in_criteria_section = True
+                continue
+            elif in_criteria_section and line.startswith('- ✅'):
+                criteria.append(line.strip())
+            elif in_criteria_section and line.startswith('##'):
+                break
+                
+        return criteria
     
     def _read_improvements(self) -> Dict[str, Any]:
         """Parse improvement documents for project vision."""
@@ -633,6 +679,21 @@ class PickupCommand:
                     'category': 'Testing',
                     'estimated_time': '90-150 minutes',
                     'wisdom': 'Testing expansion should happen in phases, not all at once'
+                })
+        
+        # ROADMAP ALIGNMENT CHECK - Ensure todos align with current roadmap phase
+        roadmap = self.context.get('roadmap', {})
+        if roadmap.get('exists', False):
+            current_phase = roadmap.get('current_phase', {})
+            if current_phase.get('status') == 'critical':
+                # Prioritize Phase 0 critical blockers
+                todos.append({
+                    'priority': 'CRITICAL',
+                    'task': 'Complete Phase 0 roadmap requirements before proceeding',
+                    'rationale': f"ROADMAP ALIGNMENT: {current_phase.get('phase', 'Unknown')} is active. TRUTH: Phase completion prevents scope creep.",
+                    'category': 'Roadmap Compliance',
+                    'estimated_time': '30-60 minutes',
+                    'wisdom': 'Complete current phase fully before advancing to next phase'
                 })
         
         # PRINCIPLE 7: "ARCHITECTURE BEFORE FEATURES" - Fix structural issues
