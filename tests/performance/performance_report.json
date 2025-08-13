@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-08-13 13:52:01",
+  "timestamp": "2025-08-13 14:49:32",
   "system_info": {
     "cpu_count": 32,
     "memory_total_gb": 31.694072723388672,
@@ -10,43 +10,43 @@
     "lscm_benchmarks": {
       "small_50_triangles": {
         "triangle_count": 50,
-        "execution_time": 0.0044729000073857605,
-        "memory_increase_mb": 0.10546875,
+        "execution_time": 0.0038978999946266413,
+        "memory_increase_mb": 0.09375,
         "success": true,
         "meets_requirements": true
       },
       "medium_100_triangles": {
         "triangle_count": 98,
-        "execution_time": 0.018919399997685105,
-        "memory_increase_mb": 0.11328125,
+        "execution_time": 0.01496270002098754,
+        "memory_increase_mb": 0.3046875,
         "success": true,
         "meets_requirements": true
       },
       "large_500_triangles": {
         "triangle_count": 450,
-        "execution_time": 0.06237880000844598,
-        "memory_increase_mb": 0.734375,
+        "execution_time": 0.06265159999020398,
+        "memory_increase_mb": 0.578125,
         "success": true,
         "meets_requirements": true
       }
     },
     "mcp_server_performance": {
-      "basic_tool_response_time": 0.10036349296569824,
+      "basic_tool_response_time": 0.10068345069885254,
       "meets_requirements": true
     },
     "complexity_analysis": {
       "measurements": [
         {
           "size": 50,
-          "time": 0.0038192999782040715
+          "time": 0.003947699966374785
         },
         {
           "size": 98,
-          "time": 0.016639499983284622
+          "time": 0.021307499962858856
         },
         {
           "size": 200,
-          "time": 0.021654000040143728
+          "time": 0.023988999950233847
         }
       ],
       "complexity_acceptable": true

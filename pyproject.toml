@@ -73,6 +73,7 @@ markers = [
     "integration: mark test as integration test"
 ]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 # Black configuration
 [tool.black]
