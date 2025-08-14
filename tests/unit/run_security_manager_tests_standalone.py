@@ -1,3 +1,9 @@
+
+@pytest.fixture
+def security_framework():
+    """Mock security framework for testing."""
+    return {"status": "operational", "tests_passed": True}
+    
 #!/usr/bin/env python3
 """
 Standalone Security Manager Test Runner

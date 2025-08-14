@@ -25,10 +25,12 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.12"
 flask = "^3.0.3"
-pyautocad = "^0.2.0"
+# Windows-only dependencies - installed conditionally
+pyautocad = {version = "^0.2.0", markers = "sys_platform == 'win32'"}
+pypiwin32 = {version = "^223", markers = "sys_platform == 'win32'"}
+# Cross-platform core dependencies
 numpy = "^2.1.0"
 scipy = "^1.14.1"
-pypiwin32 = "^223"
 fastapi = "^0.116.1"
 uvicorn = {extras = ["standard"], version = "^0.35.0"}
 python-multipart = "^0.0.20"
@@ -44,6 +46,11 @@ rope = "^1.7.0"
 jedi = "^0.19.0"
 pytest-asyncio = "^0.24.0"
 trio = "^0.30.0"
+# Additional dependencies for comprehensive testing
+psutil = "^5.9.0"
+matplotlib = "^3.7.0"
+pillow = "^10.0.0"
+sympy = "^1.12"
 
 [tool.poetry.group.ml]
 optional = true
@@ -68,12 +75,33 @@ safety = "^2.0"
 pytest-asyncio = "^0.24.0"
 [tool.pytest.ini_options]
 pythonpath = ["."]
+asyncio_mode = "auto"
 markers = [
     "asyncio: mark test as asyncio",
-    "integration: mark test as integration test"
+    "integration: mark test as integration test", 
+    "windows_only: mark test as Windows-only (requires AutoCAD COM)",
+    "cross_platform: mark test as cross-platform compatible",
+    "unit: mark test as unit test",
+    "performance: mark test as performance test",
+    "security: mark test as security test"
 ]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Test filtering based on platform
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "-v",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=75"
+]
+# Skip Windows-only tests on non-Windows platforms
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning"
+]
 
 # Black configuration
 [tool.black]

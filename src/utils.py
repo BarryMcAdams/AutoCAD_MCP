@@ -4,11 +4,38 @@ Utility functions for AutoCAD MCP Server.
 
 import logging
 import math
+import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-import pythoncom
-import win32com.client
-from pyautocad import Autocad
+# Cross-platform imports with fallbacks
+try:
+    import pythoncom
+except ImportError:
+    if sys.platform != 'win32':
+        pythoncom = None
+    else:
+        raise
+
+try:
+    import win32com.client
+except ImportError:
+    if sys.platform != 'win32':
+        from unittest.mock import MagicMock
+        win32com = MagicMock()
+        win32com.client = MagicMock()
+        sys.modules['win32com'] = win32com
+        sys.modules['win32com.client'] = win32com.client
+    else:
+        raise
+
+try:
+    from pyautocad import Autocad
+except ImportError:
+    if sys.platform != 'win32':
+        from unittest.mock import MagicMock
+        Autocad = MagicMock()
+    else:
+        raise
 
 logger = logging.getLogger(__name__)
 

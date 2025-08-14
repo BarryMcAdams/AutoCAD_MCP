@@ -100,16 +100,34 @@ class MockAutoCADApplication:
 def mock_autocad_com():
     """Global AutoCAD COM mocking for all tests."""
     
+    # Setup cross-platform mocks first
+    import sys
+    from unittest.mock import MagicMock
+    
+    # Mock win32com if not available
+    if 'win32com' not in sys.modules:
+        win32com = MagicMock()
+        win32com.client = MagicMock()
+        sys.modules['win32com'] = win32com
+        sys.modules['win32com.client'] = win32com.client
+        
+    # Mock comtypes if not available  
+    if 'comtypes' not in sys.modules:
+        comtypes = MagicMock()
+        comtypes.client = MagicMock()
+        sys.modules['comtypes'] = comtypes
+        sys.modules['comtypes.client'] = comtypes.client
+        
+    # Mock pyautocad if not available
+    if 'pyautocad' not in sys.modules:
+        pyautocad = MagicMock()
+        sys.modules['pyautocad'] = pyautocad
+    
     mock_app = MockAutoCADApplication()
     
-    # Patch win32com.client.Dispatch calls
-    with patch('win32com.client.Dispatch') as mock_dispatch:
-        mock_dispatch.return_value = mock_app
-        
-        # Patch comtypes calls
-        with patch('comtypes.client.CreateObject') as mock_create:
-            mock_create.return_value = mock_app
-            
+    # Now patch the modules
+    with patch.object(sys.modules['win32com.client'], 'Dispatch', return_value=mock_app):
+        with patch.object(sys.modules['comtypes.client'], 'CreateObject', return_value=mock_app):
             yield mock_app
 
 @pytest.fixture
@@ -191,3 +209,17 @@ def sample_lscm_result():
     ])
     
     return uv_coords
+
+class EnhancedMockAutoCAD(MockAutoCADApplication):
+    """Enhanced mock with better error handling."""
+    
+    def __init__(self):
+        super().__init__()
+        self.connection_attempts = 0
+    
+    def connect(self):
+        """Mock connection with retry logic."""
+        self.connection_attempts += 1
+        if self.connection_attempts <= 3:
+            return True
+        return False
