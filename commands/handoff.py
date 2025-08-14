@@ -331,10 +331,73 @@ class HandoffCommand:
             f.write("- **Handoff Performed**\n")
             f.write(f"- Timestamp: {self.timestamp}\n")
 
+    def update_session_todo(self):
+        """Update session_todo.md with current development tasks."""
+        todo_path = os.path.join(self.project_root, 'session_todo.md')
+        
+        # Read existing session_todo.md to preserve task content
+        existing_content = ""
+        if os.path.exists(todo_path):
+            try:
+                with open(todo_path, 'r', encoding='utf-8') as f:
+                    existing_content = f.read()
+            except:
+                existing_content = ""
+        
+        # Update the header with current timestamp
+        with open(todo_path, 'w', encoding='utf-8') as f:
+            if existing_content and "**Generated**:" in existing_content:
+                # Update timestamp in existing content
+                lines = existing_content.split('\n')
+                for i, line in enumerate(lines):
+                    if line.startswith("**Generated**:"):
+                        lines[i] = f"**Generated**: {self.timestamp}"
+                        break
+                f.write('\n'.join(lines))
+            else:
+                # Create basic structure if file doesn't exist
+                f.write("# Session TODO - Current Development Tasks\n\n")
+                f.write(f"**Generated**: {self.timestamp}\n")
+                f.write("**Project Phase**: Production Readiness\n")
+                f.write(f"**Branch**: {self._get_git_status().get('current_branch', 'unknown')}\n")
+                f.write("**Status**: Session Handoff Complete\n\n")
+                f.write("## Current Development Tasks\n\n")
+                f.write("Please use /pickup command to generate current task priorities.\n\n")
+                f.write("---\n*This file maintained by handoff.py/pickup.py scripts for session continuity*")
+
+    def update_roadmap(self):
+        """Update ROADMAP.md timestamp and status."""
+        roadmap_path = os.path.join(self.project_root, 'ROADMAP.md')
+        
+        if os.path.exists(roadmap_path):
+            try:
+                with open(roadmap_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Update the "Last Updated" line
+                lines = content.split('\n')
+                for i, line in enumerate(lines):
+                    if "- **Last Updated**:" in line:
+                        lines[i] = f"- **Last Updated**: {datetime.now().strftime('%Y-%m-%d')} (Session Handoff)"
+                        break
+                
+                # Update the footer timestamp
+                for i, line in enumerate(lines):
+                    if line.startswith("*Roadmap maintained by handoff.py/pickup.py scripts"):
+                        lines[i] = f"*Roadmap maintained by handoff.py/pickup.py scripts - Updated: {datetime.now().strftime('%Y-%m-%d')}*"
+                        break
+                
+                with open(roadmap_path, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(lines))
+            except Exception as e:
+                print(f"Warning: Could not update ROADMAP.md: {e}")
+
     def run(self):
         """Execute full handoff procedure."""
         self.update_session_handoff()
         self.update_project_tracker()
+        self.update_session_todo()
+        self.update_roadmap()
         return True
 
 def main():

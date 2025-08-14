@@ -1,6 +1,6 @@
 # AutoCAD MCP Server
 
-A professional-grade Model Context Protocol (MCP) server that bridges AutoCAD 2025 with AI assistants, enabling natural language CAD automation and advanced 3D surface processing for developers and AutoCAD professionals.
+A Model Context Protocol (MCP) server for AutoCAD 2025 integration with AI assistants. Provides programmatic access to AutoCAD functions and includes LSCM surface unfolding algorithms for manufacturing applications.
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
@@ -9,13 +9,13 @@ A professional-grade Model Context Protocol (MCP) server that bridges AutoCAD 20
 
 ## Overview
 
-This MCP server transforms AutoCAD into an AI-powered design platform by providing direct integration with conversational AI assistants. Built for both software developers and professional drafters, it combines production-ready CAD automation tools with research-grade algorithms for complex geometric processing.
+This MCP server enables AI assistants to interact with AutoCAD 2025 through the Model Context Protocol. It provides 8 core AutoCAD tools and includes mathematical algorithms for 3D surface processing.
 
-**Key Capabilities:**
-- **Natural Language CAD Control**: Command AutoCAD through conversational interfaces
-- **Advanced Surface Mathematics**: LSCM algorithms for manufacturing pattern generation  
-- **Developer Integration**: Seamless MCP protocol support for coding assistants
-- **Professional Workflows**: Tools designed for production drafting environments
+**Current Features:**
+- **Basic AutoCAD Operations**: Line, circle, extrude, revolve, and entity management
+- **3D Surface Processing**: LSCM algorithm implementation for surface unfolding
+- **MCP Protocol Support**: Compatible with Claude Desktop and other MCP clients
+- **COM Interface Integration**: Direct AutoCAD API access through Windows COM
 
 ---
 
@@ -45,16 +45,16 @@ claude
 ```
 
 **API & Extension Points**
-- **7 Core MCP Tools**: Production-tested AutoCAD operations
-- **Plugin Architecture**: Extensible tool registration system
-- **COM Wrapper Layer**: Safe, typed AutoCAD API interactions
+- **8 Core MCP Tools**: Basic AutoCAD drawing operations
+- **Plugin Architecture**: Extensible tool registration system  
+- **COM Wrapper Layer**: AutoCAD API wrapper with error handling
 - **Event System**: Hooks for custom workflow integration
 
-**Advanced Development Features**
-- **AI Code Generation**: AutoLISP, Python, and VBA script generation
-- **Performance Monitoring**: Built-in profiling and optimization tools
-- **Security Framework**: Sandboxed code execution and validation
-- **Testing Infrastructure**: Comprehensive unit and integration test suites
+**Additional Components** *(Development Phase)*
+- **AI Code Generation**: Script generation tools for AutoLISP, Python, and VBA
+- **Performance Monitoring**: Profiling and optimization utilities
+- **Security Framework**: Code execution sandbox
+- **Testing Infrastructure**: Unit and integration test framework
 
 ### Developer Workflow Examples
 
@@ -88,7 +88,7 @@ def analyze_structural_elements(drawing_path: str):
 ### Professional Drafting Features
 
 **Natural Language Commands**
-Transform your drafting workflow with conversational CAD control:
+Use conversational prompts to control AutoCAD operations:
 
 ```
 "Draw a building footprint 50x30 feet with 8-inch walls"
@@ -108,8 +108,8 @@ Transform your drafting workflow with conversational CAD control:
 
 ### Manufacturing & Fabrication
 
-**Advanced Surface Unfolding**
-Professional-grade algorithms for manufacturing pattern generation:
+**Surface Unfolding**
+LSCM algorithm for manufacturing pattern generation:
 
 - **Sheet Metal Unfolding**: LSCM algorithm converts 3D surfaces to flat patterns
 - **Material Optimization**: Minimize waste through intelligent nesting
@@ -362,40 +362,32 @@ pytest tests/unit/test_drawing_operations.py # Production tools validation
 
 ---
 
-## Project Status & Roadmap
+## Current Status
 
-### Current Status (Production Ready)
-- ✅ **Core MCP Tools**: 7 tools fully tested and operational
-- ✅ **AutoCAD Integration**: Stable COM interface with comprehensive error handling  
-- ✅ **LSCM Algorithm**: Research-grade surface unfolding implementation
-- ✅ **Professional Documentation**: Complete user and developer guides
+**Operational Components:**
+- ✅ **MCP Server**: 8 AutoCAD tools with Claude Desktop integration
+- ✅ **LSCM Algorithm**: Surface unfolding implementation (12/12 tests passing)
+- ✅ **AutoCAD Integration**: COM interface working on Windows
+- ✅ **Basic Documentation**: Setup and usage guides
 
-### Development Pipeline
-- 🔬 **Advanced Features**: 25+ components in research/development phase
-- 🛡️ **Enterprise Security**: Advanced audit logging and compliance features
-- 📊 **Analytics Platform**: Usage monitoring and optimization insights
-- 🔄 **Cloud Integration**: Multi-user collaboration and remote access
+**Development Status:**
+- 🔧 **Runtime Issues**: 17 identified issues requiring fixes
+- 🧪 **Extended Features**: Additional AI and enterprise components in development
+- 📝 **Documentation**: Ongoing improvements to user guides
 
-### Quality Metrics
-- **Test Coverage**: 78%+ (non-critical failures in development features)
-- **API Stability**: Production-ready core functionality
-- **Documentation**: Comprehensive coverage for all user levels
-- **Performance**: Optimized for professional-grade workflows
+**Known Limitations:**
+- Requires AutoCAD 2025 to be running for full functionality
+- Windows-only due to AutoCAD COM dependency
+- Some advanced features are experimental
 
 ---
 
-## License & Acknowledgments
+## License
 
-**MIT License** - Build amazing things with AutoCAD MCP Server!
+MIT License - See LICENSE file for details.
 
-**Technologies:**
-- **Model Context Protocol**: Revolutionary AI assistant integration
-- **AutoCAD COM API**: Foundation for reliable CAD integration
-- **SciPy & NumPy**: Advanced mathematical processing
-- **Python Ecosystem**: Modern development platform
-
----
-
-**AutoCAD MCP Server** - Where AI Meets Professional CAD Excellence
-
-*Ready to transform your AutoCAD workflow with AI assistance? Get started in 3 minutes with our quick setup guide!*
+**Built With:**
+- **Model Context Protocol**: AI assistant integration standard
+- **AutoCAD COM API**: Windows COM interface for AutoCAD integration
+- **SciPy & NumPy**: Mathematical processing libraries
+- **Python 3.12+**: Modern Python development environment

@@ -86,7 +86,6 @@ markers = [
     "security: mark test as security test"
 ]
 testpaths = ["tests"]
-asyncio_mode = "auto"
 # Test filtering based on platform
 addopts = [
     "--strict-markers",

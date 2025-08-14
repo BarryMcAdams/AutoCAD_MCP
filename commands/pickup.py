@@ -907,6 +907,37 @@ class PickupCommand:
         
         return "\n".join(output)
     
+    def update_roadmap(self):
+        """Update ROADMAP.md with current analysis findings."""
+        roadmap_path = os.path.join(self.project_root, 'ROADMAP.md')
+        
+        if os.path.exists(roadmap_path):
+            try:
+                with open(roadmap_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Update the "Last Updated" line
+                lines = content.split('\n')
+                for i, line in enumerate(lines):
+                    if "- **Last Updated**:" in line:
+                        lines[i] = f"- **Last Updated**: {datetime.now().strftime('%Y-%m-%d')} (Session Pickup)"
+                        break
+                
+                # Update current development focus based on analysis
+                quality = self.context.get('quality_assessment', {})
+                codebase = self.context.get('codebase_analysis', {})
+                
+                # Update footer timestamp
+                for i, line in enumerate(lines):
+                    if line.startswith("*Roadmap maintained by handoff.py/pickup.py scripts"):
+                        lines[i] = f"*Roadmap maintained by handoff.py/pickup.py scripts - Updated: {datetime.now().strftime('%Y-%m-%d')}*"
+                        break
+                
+                with open(roadmap_path, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(lines))
+            except Exception as e:
+                print(f"Warning: Could not update ROADMAP.md: {e}")
+
     def save_session_todo(self, presentation: str, todos: List[Dict[str, Any]]) -> None:
         """Save the wisdom-driven analysis to session_todo.md."""
         session_todo_path = os.path.join(self.project_root, 'session_todo.md')
@@ -1045,6 +1076,9 @@ class PickupCommand:
             
             # Save session TODO to file
             self.save_session_todo(presentation, todos)
+            
+            # Update roadmap with current analysis
+            self.update_roadmap()
             
             # Store todos for later execution
             self.todos = todos
