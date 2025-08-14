@@ -26,6 +26,51 @@
 - **Verify, Don't Assume**: Always validate assumptions against the actual state of the file system and code. Do not infer the existence of files or code from other files.
 - **Explain Failures**: If a mistake is made, provide a clear, concise breakdown of the error, the incorrect assumption that led to it, and the corrective action taken.
 
+## Critical Error Prevention Protocol
+
+### Environment Compatibility Check (MANDATORY FIRST STEP)
+
+**BEFORE ANY ANALYSIS OR TOKEN EXPENDITURE:**
+
+1. **Platform Verification**:
+   - Immediately identify current environment (WSL/Linux vs Windows vs macOS)
+   - Check if target dependencies can actually install in current environment
+   - Verify compatibility with project requirements
+
+2. **Dependency Reality Check**:
+   - Attempt to verify if core dependencies are available
+   - Identify platform-specific dependencies (COM, Windows-only packages)
+   - Check for environment managers (pip, poetry, conda availability)
+
+3. **Analysis Scope Declaration**:
+   - **MUST state limitations upfront**: "I am in [environment] and cannot test [specific functionality]"
+   - **MUST declare what can/cannot be verified**: "Analysis limited to static code review only"
+   - **MUST avoid confident claims about untestable functionality**
+
+### Token Conservation Rules
+
+**DO NOT generate extensive analysis when:**
+- Dependencies cannot be installed in current environment
+- Core functionality cannot be executed or tested
+- Platform incompatibility prevents proper assessment
+- Runtime behavior cannot be verified
+
+**INSTEAD:**
+- Immediately declare environmental limitations
+- Ask user if they want limited static analysis
+- Suggest alternative approaches or proper testing environment
+- Avoid expensive multi-agent analysis for untestable code
+
+### Failure Case: AutoCAD MCP Analysis Error
+
+**What Went Wrong**: Generated 2,000+ line analysis claiming Windows AutoCAD integration was "non-functional" while running in WSL2/Linux environment where Windows dependencies could not install.
+
+**Cost**: Significant token expenditure on fundamentally flawed analysis that user could not utilize.
+
+**Correction Applied**: This environment compatibility protocol to prevent similar failures.
+
+**Key Learning**: Environmental incompatibility ≠ Code dysfunction. Never confuse testing limitations with code quality.
+
 ## Important Instruction Reminders
 
 - Do what has been asked; nothing more, nothing less.
