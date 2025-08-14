@@ -1,0 +1,127 @@
+{
+  "metadata": {
+    "timestamp": "2025-08-14 13:07:12",
+    "test_version": "1.0.0",
+    "system_info": {
+      "platform": "Windows-11-10.0.26100-SP0",
+      "python_version": "3.12.3 (tags/v3.12.3:f6650f9, Apr  9 2024, 14:05:25) [MSC v.1938 64 bit (AMD64)]",
+      "cpu_count": 32,
+      "memory_total_gb": 31.694072723388672,
+      "architecture": "64bit"
+    },
+    "configuration": {
+      "thresholds": {
+        "lscm_small_mesh_time_limit": 2.0,
+        "lscm_medium_mesh_time_limit": 10.0,
+        "lscm_memory_limit_mb": 100.0,
+        "basic_tool_response_limit": 1.0,
+        "advanced_tool_response_limit": 5.0,
+        "server_startup_limit": 5.0,
+        "server_shutdown_limit": 2.0,
+        "concurrent_efficiency_min": 2.0,
+        "memory_growth_limit_mb": 200.0,
+        "memory_leak_threshold_mb": 1.0,
+        "max_complexity_exponent": 2.5,
+        "min_complexity_exponent": 1.0,
+        "memory_per_triangle_limit": 1.0
+      },
+      "test_config": {
+        "small_mesh_triangles": 50,
+        "medium_mesh_triangles": 100,
+        "large_mesh_triangles": 500,
+        "stress_test_triangles": 1000,
+        "max_concurrent_requests": 8,
+        "load_test_iterations": 100,
+        "memory_sample_interval": 20,
+        "test_timeout_seconds": 30.0,
+        "stress_test_timeout_seconds": 60.0,
+        "concurrent_request_timeout": 30.0,
+        "monitoring_sample_interval": 0.1,
+        "performance_report_path": "performance_report.json",
+        "baseline_metrics_path": "performance_baselines.json",
+        "regression_threshold": 1.5,
+        "baseline_update_threshold": 0.9
+      }
+    }
+  },
+  "test_results": {
+    "lscm_benchmarks": {
+      "tiny_mesh": {
+        "triangle_count": 18,
+        "execution_time": 0.009997399999974732,
+        "memory_usage_mb": 0.8671875,
+        "cpu_usage": 0.0,
+        "success": true,
+        "validation": {
+          "execution_time": true,
+          "memory_usage": true
+        },
+        "meets_requirements": true
+      },
+      "small_mesh": {
+        "triangle_count": 50,
+        "execution_time": 0.011165800000071613,
+        "memory_usage_mb": 0.01953125,
+        "cpu_usage": 0.0,
+        "success": true,
+        "validation": {
+          "execution_time": true,
+          "memory_usage": true
+        },
+        "meets_requirements": true
+      },
+      "medium_mesh": {
+        "triangle_count": 98,
+        "execution_time": 0.023716799999874638,
+        "memory_usage_mb": 0.18359375,
+        "cpu_usage": 0.0,
+        "success": true,
+        "validation": {
+          "execution_time": true,
+          "memory_usage": true
+        },
+        "meets_requirements": true
+      }
+    },
+    "mcp_server_performance": {
+      "server_startup": {
+        "execution_time": 0.5007598000001963,
+        "memory_usage_mb": 0.0,
+        "success": true,
+        "meets_requirements": true
+      },
+      "basic_tool_response": {
+        "execution_time": 0.1005619000002298,
+        "memory_usage_mb": 0.0234375,
+        "success": true,
+        "meets_requirements": true
+      },
+      "server_memory_usage": {
+        "execution_time": 0.10309669999969628,
+        "memory_usage_mb": 0.01953125,
+        "success": true,
+        "meets_requirements": true
+      }
+    },
+    "complexity_analysis": {},
+    "regression_tests": {}
+  },
+  "summary": {
+    "total_tests": 6,
+    "passed_tests": 6,
+    "failed_tests": 0,
+    "performance_score": 100.0,
+    "requirements_met": {
+      "lscm_performance": true,
+      "server_performance": true,
+      "memory_usage": true
+    },
+    "recommendations": [
+      "Performance requirements met - consider stress testing with larger datasets"
+    ],
+    "overall_status": "PASS"
+  },
+  "detailed_metrics": {},
+  "alerts": [],
+  "trends": {}
+}

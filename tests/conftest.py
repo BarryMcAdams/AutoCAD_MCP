@@ -92,6 +92,11 @@ class MockAutoCADApplication:
         self.Documents = [self.ActiveDocument]
         self.Visible = True
         
+    @property
+    def Count(self) -> int:
+        """Returns the number of documents."""
+        return len(self.Documents)
+
     def GetInterfaceObject(self, prog_id: str):
         """Mock interface object creation."""
         return MagicMock()

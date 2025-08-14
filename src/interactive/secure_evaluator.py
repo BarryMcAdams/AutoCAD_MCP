@@ -1,15 +1,22 @@
 """
-Secure Expression Evaluator
-===========================
+Secure Evaluator for Interactive Development Tools.
 
-Safe evaluation of Python expressions with restricted namespace and AST validation.
-Prevents code injection attacks while allowing legitimate debugging expressions.
+Provides safe evaluation of Python expressions with restricted namespace
+and built-in function access. Essential for debugging and interactive features.
+
+Security is paramount - this module prevents arbitrary code execution
+while allowing safe mathematical and logical operations.
 """
 
 import ast
+import concurrent.futures
 import logging
+import math
 import operator
-from typing import Any, Dict, Optional, Set, Union
+import random
+import re
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
@@ -226,20 +233,22 @@ class SecureExpressionEvaluator:
         expression: str,
         local_vars: Optional[Dict[str, Any]] = None,
         global_vars: Optional[Dict[str, Any]] = None,
+        timeout: float = 5.0,  # Default timeout of 5 seconds
     ) -> Any:
         """
-        Safely evaluate a Python expression.
+        Safely evaluate a Python expression with a timeout.
 
         Args:
             expression: Python expression to evaluate
             local_vars: Local variable namespace
             global_vars: Global variable namespace
+            timeout: Maximum time (in seconds) to allow for evaluation
 
         Returns:
             Result of expression evaluation
 
         Raises:
-            SecureEvaluationError: If expression is unsafe or evaluation fails
+            SecureEvaluationError: If expression is unsafe, evaluation fails, or times out
         """
         # DEBUG: Log evaluation attempt for security analysis
         logger.info(f"DEBUG: safe_eval called with expression: {expression}")
@@ -247,6 +256,7 @@ class SecureExpressionEvaluator:
         logger.info(
             f"DEBUG: Global variables keys: {list(global_vars.keys()) if global_vars else []}"
         )
+        logger.info(f"DEBUG: Timeout set to: {timeout} seconds")
 
         # Security check
         if not self.is_safe_expression(expression):
@@ -298,25 +308,16 @@ class SecureExpressionEvaluator:
         )
 
         try:
-            # Try to parse as expression first
-            try:
-                tree = ast.parse(expression, mode="eval")
-                code = compile(tree, "<secure_eval>", "eval")
-                # DEBUG: Log eval execution
-                logger.info(f"DEBUG: Executing eval() with restricted namespace")
-                result = eval(code, safe_globals, safe_locals)
-                logger.info(f"DEBUG: Eval successful, result type: {type(result).__name__}")
-                return result
-            except SyntaxError:
-                # If it's not a valid expression, try as a statement
-                logger.info(f"DEBUG: Expression failed as eval, trying exec()")
-                tree = ast.parse(expression, mode="exec")
-                code = compile(tree, "<secure_eval>", "exec")
-                # Execute with restricted namespace (statements return None)
-                logger.info(f"DEBUG: Executing exec() with restricted namespace")
-                exec(code, safe_globals, safe_locals)
-                logger.info(f"DEBUG: Exec() completed successfully")
-                return None
+            # Run the evaluation with a timeout
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(self._eval_core, expression, safe_globals, safe_locals)
+                try:
+                    result = future.result(timeout=timeout)
+                    logger.info(f"DEBUG: Evaluation completed successfully within {timeout} seconds")
+                    return result
+                except concurrent.futures.TimeoutError:
+                    logger.error(f"DEBUG: Evaluation timed out after {timeout} seconds")
+                    raise SecureEvaluationError(f"Evaluation timed out after {timeout} seconds")
 
         except SecureEvaluationError:
             # Re-raise our own security errors
@@ -326,6 +327,41 @@ class SecureExpressionEvaluator:
             logger.error(f"DEBUG: Execution failed: {e}")
             # Let Python errors propagate without wrapping
             raise
+
+    def _eval_core(self, expression: str, safe_globals: Dict[str, Any], safe_locals: Dict[str, Any]) -> Any:
+        """
+        Core evaluation logic, intended to be run with a timeout.
+        
+        Args:
+            expression: Python expression to evaluate
+            safe_globals: Restricted global namespace
+            safe_locals: Restricted local namespace
+            
+        Returns:
+            Result of expression evaluation
+            
+        Raises:
+            Exception: Any exception that occurs during evaluation
+        """
+        # Try to parse as expression first
+        try:
+            tree = ast.parse(expression, mode="eval")
+            code = compile(tree, "<secure_eval>", "eval")
+            # DEBUG: Log eval execution
+            logger.info("DEBUG: Executing eval() with restricted namespace")
+            result = eval(code, safe_globals, safe_locals)
+            logger.info(f"DEBUG: Eval successful, result type: {type(result).__name__}")
+            return result
+        except SyntaxError:
+            # If it's not a valid expression, try as a statement
+            logger.info("DEBUG: Expression failed as eval, trying exec()")
+            tree = ast.parse(expression, mode="exec")
+            code = compile(tree, "<secure_eval>", "exec")
+            # Execute with restricted namespace (statements return None)
+            logger.info("DEBUG: Executing exec() with restricted namespace")
+            exec(code, safe_globals, safe_locals)
+            logger.info("DEBUG: Exec() completed successfully")
+            return None
 
     def _create_safe_namespace(self, namespace: Dict[str, Any]) -> Dict[str, Any]:
         """

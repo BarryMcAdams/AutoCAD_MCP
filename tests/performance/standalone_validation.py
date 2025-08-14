@@ -239,10 +239,19 @@ def generate_validation_report():
     print("AUTOCAD MCP PERFORMANCE FRAMEWORK VALIDATION REPORT")
     print("=" * 80)
     
+    # Calculate validation score
+    validation_score = 0.0
+    if total_validations > 0:
+        validation_score = passed_validations / total_validations * 100
+    
     report = {
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "validation_results": {},
-        "summary": {}
+        "timestamp": datetime.now().isoformat(),
+        "test_files_found": len(test_files),
+        "validation_results": results,
+        "total_validations": total_validations,
+        "passed_validations": passed_validations,
+        "overall_pass": overall_pass,
+        "validation_score": validation_score
     }
     
     # File structure validation

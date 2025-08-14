@@ -422,6 +422,16 @@ class BenchmarkRunner:
         
         total_time = time.time() - start_time
         
+        # Handle case where no requests were made
+        if not results:
+            return {
+                "concurrent_requests": num_concurrent,
+                "total_time": total_time,
+                "average_response_time": 0.0,
+                "success_rate": 0.0,
+                "throughput": 0.0 if total_time == 0 else num_concurrent / total_time
+            }
+        
         return {
             "concurrent_requests": num_concurrent,
             "total_time": total_time,

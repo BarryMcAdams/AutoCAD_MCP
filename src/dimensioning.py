@@ -350,73 +350,14 @@ class DimensioningSystem:
             
             # Extract pattern bounds and key points
             if 'pattern_bounds' in pattern_data:
-                bounds = pattern_data['pattern_bounds']
-                min_pt = bounds['min']
-                max_pt = bounds['max']
-                
-                # Create overall pattern dimensions
-                # Width dimension (bottom of pattern)
-                width_start = [min_pt[0], min_pt[1] - 10, 0]  # Offset below pattern
-                width_end = [max_pt[0], min_pt[1] - 10, 0]
-                width_dim_line = [min_pt[0] + (max_pt[0] - min_pt[0])/2, min_pt[1] - 15, 0]
-                
-                width_dim = self.create_linear_dimension(width_start, width_end, width_dim_line)
-                if 'error' not in width_dim:
-                    dimensions.append(width_dim)
-                
-                # Height dimension (left side of pattern)
-                height_start = [min_pt[0] - 10, min_pt[1], 0]  # Offset left of pattern
-                height_end = [min_pt[0] - 10, max_pt[1], 0]
-                height_dim_line = [min_pt[0] - 15, min_pt[1] + (max_pt[1] - min_pt[1])/2, 0]
-                
-                height_dim = self.create_linear_dimension(height_start, height_end, height_dim_line)
-                if 'error' not in height_dim:
-                    dimensions.append(height_dim)
+                self._dimension_pattern_bounds(pattern_data['pattern_bounds'], dimensions)
             
             # Add fold line dimensions if available
             if 'fold_lines' in pattern_data:
-                for i, fold_line in enumerate(pattern_data['fold_lines'][:5]):  # Limit to 5 fold lines
-                    try:
-                        start_coord = fold_line['start_coord']
-                        end_coord = fold_line['end_coord']
-                        fold_type = fold_line.get('fold_type', 'fold')
-                        fold_angle = fold_line.get('fold_angle', 0)
-                        
-                        # Create dimension for fold line length
-                        offset_dist = 5 + i * 3  # Stagger dimensions
-                        mid_x = (start_coord[0] + end_coord[0]) / 2
-                        mid_y = (start_coord[1] + end_coord[1]) / 2
-                        dim_line_pt = [mid_x, mid_y + offset_dist, 0]
-                        
-                        fold_dim = self.create_linear_dimension(start_coord, end_coord, dim_line_pt, 
-                                                              f"{fold_type.upper()}")
-                        if 'error' not in fold_dim:
-                            dimensions.append(fold_dim)
-                        
-                        # Add fold angle annotation if significant
-                        if fold_angle > 1.0:
-                            angle_text = f"{fold_type.replace('_', ' ').title()}: {fold_angle:.1f}°"
-                            angle_annotation = self.create_text_annotation(
-                                [mid_x + 5, mid_y + offset_dist + 3, 0], 
-                                angle_text,
-                                text_height=1.5
-                            )
-                            if 'error' not in angle_annotation:
-                                annotations.append(angle_annotation)
-                                
-                    except Exception as e:
-                        logger.warning(f"Failed to dimension fold line {i}: {e}")
+                self._dimension_fold_lines(pattern_data['fold_lines'], dimensions, annotations)
             
             # Add manufacturing notes
-            manufacturing_notes = self.generate_manufacturing_notes(pattern_data)
-            for note in manufacturing_notes:
-                note_annotation = self.create_text_annotation(
-                    note['position'], 
-                    note['text'],
-                    text_height=2.0
-                )
-                if 'error' not in note_annotation:
-                    annotations.append(note_annotation)
+            self._add_manufacturing_notes(pattern_data, annotations)
             
             # Add title block information
             title_info = self.create_title_block(pattern_data)
@@ -441,6 +382,78 @@ class DimensioningSystem:
         except Exception as e:
             logger.error(f"Failed to dimension unfolded pattern: {e}")
             return {'error': str(e)}
+
+    def _dimension_pattern_bounds(self, bounds: Dict[str, List[float]], dimensions: List[Dict[str, Any]]) -> None:
+        """Create overall pattern dimensions from bounds."""
+        min_pt = bounds['min']
+        max_pt = bounds['max']
+        
+        # Create overall pattern dimensions
+        # Width dimension (bottom of pattern)
+        width_start = [min_pt[0], min_pt[1] - 10, 0]  # Offset below pattern
+        width_end = [max_pt[0], min_pt[1] - 10, 0]
+        width_dim_line = [min_pt[0] + (max_pt[0] - min_pt[0])/2, min_pt[1] - 15, 0]
+        
+        width_dim = self.create_linear_dimension(width_start, width_end, width_dim_line)
+        if 'error' not in width_dim:
+            dimensions.append(width_dim)
+        
+        # Height dimension (left side of pattern)
+        height_start = [min_pt[0] - 10, min_pt[1], 0]  # Offset left of pattern
+        height_end = [min_pt[0] - 10, max_pt[1], 0]
+        height_dim_line = [min_pt[0] - 15, min_pt[1] + (max_pt[1] - min_pt[1])/2, 0]
+        
+        height_dim = self.create_linear_dimension(height_start, height_end, height_dim_line)
+        if 'error' not in height_dim:
+            dimensions.append(height_dim)
+
+    def _dimension_fold_lines(self, fold_lines: List[Dict[str, Any]], dimensions: List[Dict[str, Any]], 
+                             annotations: List[Dict[str, Any]]) -> None:
+        """Add dimensions for fold lines."""
+        for i, fold_line in enumerate(fold_lines[:5]):  # Limit to 5 fold lines
+            try:
+                start_coord = fold_line['start_coord']
+                end_coord = fold_line['end_coord']
+                fold_type = fold_line.get('fold_type', 'fold')
+                fold_angle = fold_line.get('fold_angle', 0)
+                
+                # Create dimension for fold line length
+                offset_dist = 5 + i * 3  # Stagger dimensions
+                mid_x = (start_coord[0] + end_coord[0]) / 2
+                mid_y = (start_coord[1] + end_coord[1]) / 2
+                dim_line_pt = [mid_x, mid_y + offset_dist, 0]
+                
+                fold_dim = self.create_linear_dimension(start_coord, end_coord, dim_line_pt, 
+                                                      f"{fold_type.upper()}")
+                if 'error' not in fold_dim:
+                    dimensions.append(fold_dim)
+                
+                # Add fold angle annotation if significant
+                if fold_angle > 1.0:
+                    angle_text = f"{fold_type.replace('_', ' ').title()}: {fold_angle:.1f}°"
+                    angle_annotation = self.create_text_annotation(
+                        [mid_x + 5, mid_y + offset_dist + 3, 0], 
+                        angle_text,
+                        text_height=1.5
+                    )
+                    if 'error' not in angle_annotation:
+                        annotations.append(angle_annotation)
+                        
+            except Exception as e:
+                logger.warning(f"Failed to dimension fold line {i}: {e}")
+
+    def _add_manufacturing_notes(self, pattern_data: Dict[str, Any], 
+                                annotations: List[Dict[str, Any]]) -> None:
+        """Add manufacturing notes to the drawing."""
+        manufacturing_notes = self.generate_manufacturing_notes(pattern_data)
+        for note in manufacturing_notes:
+            note_annotation = self.create_text_annotation(
+                note['position'], 
+                note['text'],
+                text_height=2.0
+            )
+            if 'error' not in note_annotation:
+                annotations.append(note_annotation)
     
     def generate_manufacturing_notes(self, pattern_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Generate manufacturing notes based on pattern analysis."""

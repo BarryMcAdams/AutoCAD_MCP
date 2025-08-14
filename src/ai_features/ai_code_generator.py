@@ -1334,10 +1334,12 @@ End Function
         if language == CodeLanguage.PYTHON:
             if "try:" not in code:
                 # Add proper error handling without breaking syntax
-                code = (
-                    code
-                    + '\n\n# Error handling\ntry:\n    pass\nexcept Exception as e:\n    print(f"Error: {e}")'
-                )
+                # We'll wrap the main execution logic in a try-except block
+                # For now, we'll assume the main logic is in a function called 'main'
+                # In the future, we might want to parse the code to identify the main execution block
+                lines = code.split('\n')
+                indented_lines = ['    ' + line for line in lines if line.strip()]
+                code = 'def main():\n' + '\n'.join(indented_lines) + '\n\nif __name__ == "__main__":\n    try:\n        main()\n    except Exception as e:\n        print(f"An error occurred: {e}")\n        # Optionally, log the error or perform other error handling tasks\n        # import traceback\n        # traceback.print_exc()'
         elif language == CodeLanguage.AUTOLISP:
             if "error" not in code.lower():
                 # For AutoLISP, we'll add error handling at the beginning of the function body
