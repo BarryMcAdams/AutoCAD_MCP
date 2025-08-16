@@ -9,8 +9,8 @@ both manufacturing workflows and interactive development sessions.
 
 import logging
 import time
-from typing import Optional, Dict, Any
 from threading import Lock
+from typing import Any
 
 # Setup logger first
 logger = logging.getLogger(__name__)
@@ -194,7 +194,7 @@ class ConnectionManager:
             logger.error(f"Connection recovery failed: {str(e)}")
             return False
 
-    def get_connection_status(self) -> Dict[str, Any]:
+    def get_connection_status(self) -> dict[str, Any]:
         """
         Get detailed connection status and statistics.
 

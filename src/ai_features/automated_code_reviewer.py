@@ -11,16 +11,14 @@ Intelligent code review engine with comprehensive quality analysis including:
 """
 
 import ast
-import inspect
-import json
 import logging
 import re
 import time
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 
 # Import existing analysis components
 from ..interactive.code_refactoring import CodeRefactoringEngine, RefactoringSuggestion
@@ -68,23 +66,23 @@ class ReviewFinding:
     file_path: str
     line_number: int
     column_number: int = 0
-    end_line: Optional[int] = None
+    end_line: int | None = None
 
     # Code context
     code_snippet: str = ""
-    suggested_fix: Optional[str] = None
+    suggested_fix: str | None = None
 
     # Scoring impact
     quality_impact: float = 0.0  # Impact on overall quality score (-1.0 to 1.0)
 
     # Additional metadata
-    rule_id: Optional[str] = None
-    references: List[str] = field(default_factory=list)
-    tags: Set[str] = field(default_factory=set)
+    rule_id: str | None = None
+    references: list[str] = field(default_factory=list)
+    tags: set[str] = field(default_factory=set)
 
     # AutoCAD-specific
-    autocad_version_impact: Optional[str] = None
-    performance_impact: Optional[str] = None
+    autocad_version_impact: str | None = None
+    performance_impact: str | None = None
 
 
 @dataclass
@@ -115,8 +113,8 @@ class QualityMetrics:
     comment_density: float = 0.0
 
     # Trend analysis
-    quality_trend: Optional[str] = None  # 'improving', 'declining', 'stable'
-    previous_score: Optional[float] = None
+    quality_trend: str | None = None  # 'improving', 'declining', 'stable'
+    previous_score: float | None = None
 
 
 @dataclass
@@ -129,16 +127,16 @@ class CodeReviewReport:
 
     # Quality assessment
     quality_metrics: QualityMetrics
-    findings: List[ReviewFinding] = field(default_factory=list)
+    findings: list[ReviewFinding] = field(default_factory=list)
 
     # Summary statistics
     total_findings: int = 0
-    findings_by_severity: Dict[str, int] = field(default_factory=dict)
-    findings_by_category: Dict[str, int] = field(default_factory=dict)
+    findings_by_severity: dict[str, int] = field(default_factory=dict)
+    findings_by_category: dict[str, int] = field(default_factory=dict)
 
     # Recommendations
-    priority_fixes: List[ReviewFinding] = field(default_factory=list)
-    suggested_refactorings: List[RefactoringSuggestion] = field(default_factory=list)
+    priority_fixes: list[ReviewFinding] = field(default_factory=list)
+    suggested_refactorings: list[RefactoringSuggestion] = field(default_factory=list)
 
     # Review metadata
     review_duration: float = 0.0
@@ -146,14 +144,16 @@ class CodeReviewReport:
     automated_fix_suggestions: int = 0
 
     # Comparison with standards
-    compliance_score: Dict[str, float] = field(default_factory=dict)
+    compliance_score: dict[str, float] = field(default_factory=dict)
     best_practices_adherence: float = 0.0
 
 
 class CodeReviewRule:
     """Represents a single code review rule."""
 
-    def __init__(self, rule_id: str, category: ReviewCategory, severity: ReviewSeverity):
+    def __init__(
+        self, rule_id: str, category: ReviewCategory, severity: ReviewSeverity
+    ):
         self.rule_id = rule_id
         self.category = category
         self.severity = severity
@@ -169,9 +169,9 @@ class CodeReviewRule:
     def check(
         self,
         code: str,
-        ast_tree: Optional[ast.AST] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> List[ReviewFinding]:
+        ast_tree: ast.AST | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> list[ReviewFinding]:
         """Check if this rule applies to the given code."""
         findings = []
 
@@ -191,7 +191,9 @@ class CodeReviewRule:
                 matches = re.finditer(self.pattern, code, re.MULTILINE)
                 for match in matches:
                     line_number = code[: match.start()].count("\n") + 1
-                    finding = self._create_finding_from_match(match, line_number, code)
+                    finding = self._create_finding_from_match(
+                        match, line_number, code
+                    )
                     findings.append(finding)
 
             elif hasattr(self.pattern, "visit") and ast_tree:
@@ -207,7 +209,7 @@ class CodeReviewRule:
 
         return findings
 
-    def _create_finding_from_result(self, result: Dict[str, Any]) -> ReviewFinding:
+    def _create_finding_from_result(self, result: dict[str, Any]) -> ReviewFinding:
         """Create a ReviewFinding from a custom rule result."""
         return ReviewFinding(
             id=f"{self.rule_id}_{int(time.time() * 1000) % 1000000:06d}",
@@ -245,7 +247,9 @@ class CodeReviewRule:
             references=self.references.copy(),
         )
 
-    def _create_finding_from_ast_result(self, result: Dict[str, Any]) -> ReviewFinding:
+    def _create_finding_from_ast_result(
+        self, result: dict[str, Any]
+    ) -> ReviewFinding:
         """Create a ReviewFinding from an AST visitor result."""
         return ReviewFinding(
             id=f"{self.rule_id}_{result.get('line', 0)}_{int(time.time() * 1000) % 1000000:06d}",
@@ -273,7 +277,7 @@ class AutoCADASTVisitor(ast.NodeVisitor):
         self.error_handling_coverage = 0
         self.total_com_calls = 0
 
-    def visit_Call(self, node):
+    def visit_call(self, node):
         """Analyze function calls for AutoCAD patterns."""
         call_name = self._get_call_name(node)
 
@@ -294,7 +298,7 @@ class AutoCADASTVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
-    def visit_Try(self, node):
+    def visit_try(self, node):
         """Analyze error handling patterns."""
         # Check if try block contains COM calls
         com_calls_in_try = 0
@@ -384,7 +388,7 @@ class AutomatedCodeReviewer:
         logger.info("Automated code reviewer initialized")
 
     def review_code(
-        self, code: str, file_path: str, context: Optional[Dict[str, Any]] = None
+        self, code: str, file_path: str, context: dict[str, Any] | None = None
     ) -> CodeReviewReport:
         """
         Perform comprehensive automated code review.
@@ -417,13 +421,14 @@ class AutomatedCodeReviewer:
                     line_number=getattr(e, "lineno", 0),
                     quality_impact=-2.0,
                 )
-                # Since we can't create a full report without metrics, we'll have to return a minimal one
+                # Since we can't create a full report without metrics,
+                # we'll have to return a minimal one
                 return CodeReviewReport(
-                    review_id=review_id, 
-                    timestamp=time.time(), 
+                    review_id=review_id,
+                    timestamp=time.time(),
                     file_path=file_path,
                     quality_metrics=QualityMetrics(overall_score=0.0),
-                    findings=[syntax_finding]
+                    findings=[syntax_finding],
                 )
 
             # Run all review rules
@@ -445,13 +450,15 @@ class AutomatedCodeReviewer:
             all_findings.extend(security_findings)
 
             # Calculate quality metrics
-            quality_metrics = self._calculate_quality_metrics(code, ast_tree, all_findings)
+            quality_metrics = self._calculate_quality_metrics(
+                code, ast_tree, all_findings
+            )
 
             report = CodeReviewReport(
-                review_id=review_id, 
-                timestamp=time.time(), 
+                review_id=review_id,
+                timestamp=time.time(),
                 file_path=file_path,
-                quality_metrics=quality_metrics
+                quality_metrics=quality_metrics,
             )
 
             # Process and rank findings
@@ -462,10 +469,12 @@ class AutomatedCodeReviewer:
 
             # Get refactoring suggestions
             if self.refactoring_engine:
-                refactoring_suggestions = self.refactoring_engine.generate_refactoring_suggestions(
-                    file_path
+                refactoring_suggestions = (
+                    self.refactoring_engine.generate_refactoring_suggestions(file_path)
                 )
-                report.suggested_refactorings = refactoring_suggestions[:5]  # Top 5 suggestions
+                report.suggested_refactorings = refactoring_suggestions[
+                    :5
+                ]  # Top 5 suggestions
 
             # Identify priority fixes
             report.priority_fixes = [
@@ -476,7 +485,9 @@ class AutomatedCodeReviewer:
 
             # Calculate compliance scores
             report.compliance_score = self._calculate_compliance_scores(report.findings)
-            report.best_practices_adherence = self._calculate_best_practices_adherence(ast_tree)
+            report.best_practices_adherence = self._calculate_best_practices_adherence(
+                ast_tree
+            )
 
             # Set review metadata
             report.review_duration = time.time() - start_time
@@ -508,7 +519,9 @@ class AutomatedCodeReviewer:
 
         return report
 
-    def review_multiple_files(self, file_paths: List[str]) -> Dict[str, CodeReviewReport]:
+    def review_multiple_files(
+        self, file_paths: list[str]
+    ) -> dict[str, CodeReviewReport]:
         """
         Review multiple files and provide aggregated insights.
 
@@ -522,7 +535,7 @@ class AutomatedCodeReviewer:
 
         for file_path in file_paths:
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     code = f.read()
 
                 report = self.review_code(code, file_path)
@@ -541,7 +554,7 @@ class AutomatedCodeReviewer:
 
         return reports
 
-    def get_quality_trend_analysis(self, file_path: str) -> Dict[str, Any]:
+    def get_quality_trend_analysis(self, file_path: str) -> dict[str, Any]:
         """
         Analyze quality trends for a specific file.
 
@@ -551,7 +564,9 @@ class AutomatedCodeReviewer:
         Returns:
             Trend analysis report
         """
-        file_history = [report for report in self.review_history if report.file_path == file_path]
+        file_history = [
+            report for report in self.review_history if report.file_path == file_path
+        ]
 
         if len(file_history) < 2:
             return {"error": "Insufficient history for trend analysis"}
@@ -565,7 +580,8 @@ class AutomatedCodeReviewer:
         trend_analysis = {
             "file_path": file_path,
             "review_count": len(file_history),
-            "time_span_days": (file_history[-1].timestamp - file_history[0].timestamp) / 86400,
+            "time_span_days": (file_history[-1].timestamp - file_history[0].timestamp)
+            / 86400,
             "quality_trend": self._calculate_trend(quality_scores),
             "average_quality": sum(quality_scores) / len(quality_scores),
             "latest_quality": quality_scores[-1],
@@ -586,7 +602,9 @@ class AutomatedCodeReviewer:
 
         return trend_analysis
 
-    def generate_team_quality_report(self, reports: Dict[str, CodeReviewReport]) -> Dict[str, Any]:
+    def generate_team_quality_report(
+        self, reports: dict[str, CodeReviewReport]
+    ) -> dict[str, Any]:
         """
         Generate team-wide quality report from multiple file reviews.
 
@@ -601,7 +619,9 @@ class AutomatedCodeReviewer:
 
         # Aggregate metrics
         total_files = len(reports)
-        valid_reports = [r for r in reports.values() if r.quality_metrics.overall_score > 0]
+        valid_reports = [
+            r for r in reports.values() if r.quality_metrics.overall_score > 0
+        ]
 
         if not valid_reports:
             return {"error": "No valid reports found"}
@@ -611,11 +631,15 @@ class AutomatedCodeReviewer:
             "total_files_reviewed": total_files,
             "valid_reports": len(valid_reports),
             "overall_metrics": {
-                "average_quality_score": sum(r.quality_metrics.overall_score for r in valid_reports)
+                "average_quality_score": sum(
+                    r.quality_metrics.overall_score for r in valid_reports
+                )
                 / len(valid_reports),
                 "total_findings": sum(len(r.findings) for r in valid_reports),
                 "critical_issues": sum(len(r.priority_fixes) for r in valid_reports),
-                "total_lines_of_code": sum(r.quality_metrics.lines_of_code for r in valid_reports),
+                "total_lines_of_code": sum(
+                    r.quality_metrics.lines_of_code for r in valid_reports
+                ),
             },
             "category_breakdown": self._aggregate_category_breakdown(valid_reports),
             "severity_breakdown": self._aggregate_severity_breakdown(valid_reports),
@@ -635,7 +659,9 @@ class AutomatedCodeReviewer:
                 "Excellent code quality maintained across the team"
             )
 
-        critical_ratio = team_report["overall_metrics"]["critical_issues"] / max(total_files, 1)
+        critical_ratio = (
+            team_report["overall_metrics"]["critical_issues"] / max(total_files, 1)
+        )
         if critical_ratio > 0.5:
             team_report["recommendations"].append(
                 "High number of critical issues - prioritize immediate fixes"
@@ -643,12 +669,14 @@ class AutomatedCodeReviewer:
 
         return team_report
 
-    def _initialize_review_rules(self) -> List[CodeReviewRule]:
+    def _initialize_review_rules(self) -> list[CodeReviewRule]:
         """Initialize built-in code review rules."""
         rules = []
 
         # Style rules
-        long_line_rule = CodeReviewRule("long_lines", ReviewCategory.STYLE, ReviewSeverity.MINOR)
+        long_line_rule = CodeReviewRule(
+            "long_lines", ReviewCategory.STYLE, ReviewSeverity.MINOR
+        )
         long_line_rule.name = "Long Lines"
         long_line_rule.description = "Lines should not exceed 120 characters"
         long_line_rule.pattern = r"^.{121,}$"
@@ -672,7 +700,9 @@ class AutomatedCodeReviewer:
             "eval_usage", ReviewCategory.SECURITY, ReviewSeverity.CRITICAL
         )
         eval_usage_rule.name = "Dangerous eval() Usage"
-        eval_usage_rule.description = "Using eval() can be dangerous - consider safer alternatives"
+        eval_usage_rule.description = (
+            "Using eval() can be dangerous - consider safer alternatives"
+        )
         eval_usage_rule.pattern = r"\beval\s*\("
         eval_usage_rule.quality_impact = -1.0
         rules.append(eval_usage_rule)
@@ -684,7 +714,9 @@ class AutomatedCodeReviewer:
             ReviewSeverity.MAJOR,
         )
         com_error_rule.name = "Missing COM Error Handling"
-        com_error_rule.description = "AutoCAD COM operations should be wrapped in try-except blocks"
+        com_error_rule.description = (
+            "AutoCAD COM operations should be wrapped in try-except blocks"
+        )
         com_error_rule.pattern = self._create_com_error_checker()
         com_error_rule.quality_impact = -0.5
         rules.append(com_error_rule)
@@ -695,8 +727,8 @@ class AutomatedCodeReviewer:
         """Create a checker function for COM error handling."""
 
         def check_com_errors(
-            code: str, ast_tree: Optional[ast.AST], context: Optional[Dict[str, Any]]
-        ) -> List[Dict[str, Any]]:
+            code: str, ast_tree: ast.AST | None, context: dict[str, Any] | None
+        ) -> list[dict[str, Any]]:
             findings = []
 
             if not ast_tree:
@@ -706,15 +738,26 @@ class AutomatedCodeReviewer:
             visitor.visit(ast_tree)
 
             # Check if COM calls have adequate error handling
-            unprotected_calls = [call for call in visitor.com_calls if not call["in_try_block"]]
+            unprotected_calls = [
+                call for call in visitor.com_calls if not call["in_try_block"]
+            ]
 
             for call in unprotected_calls:
                 findings.append(
                     {
                         "line_number": call["line"],
-                        "message": f"COM call '{call['name']}' should be wrapped in try-except block",
+                        "message": (
+                            f"COM call '{call['name']}' should be wrapped in "
+                            "try-except block"
+                        ),
                         "code_snippet": f"# Line {call['line']}: {call['name']}",
-                        "suggested_fix": f"try:\n    {call['name']}\nexcept (com_error, AttributeError, RuntimeError) as e:\n    # Handle COM error appropriately\n    logger.warning(f\"COM error in {call['name']}: {{e}}\")\n    # Consider alternative approach or graceful degradation",
+                        "suggested_fix": (
+                            f"try:\n    {call['name']}\nexcept (com_error, "
+                            "AttributeError, RuntimeError) as e:\n    # Handle COM "
+                            "error appropriately\n    logger.warning(f\"COM error "
+                            f"in {call['name']}: {{e}}\")\n    # Consider "
+                            "alternative approach or graceful degradation"
+                        ),
                     }
                 )
 
@@ -722,7 +765,9 @@ class AutomatedCodeReviewer:
 
         return check_com_errors
 
-    def _analyze_autocad_patterns(self, code: str, ast_tree: ast.AST) -> List[ReviewFinding]:
+    def _analyze_autocad_patterns(
+        self, code: str, ast_tree: ast.AST
+    ) -> list[ReviewFinding]:
         """Analyze AutoCAD-specific code patterns."""
         findings = []
 
@@ -738,17 +783,25 @@ class AutomatedCodeReviewer:
                         category=ReviewCategory.AUTOCAD_BEST_PRACTICES,
                         severity=ReviewSeverity.MAJOR,
                         title="Missing Transaction Usage",
-                        description=f"Found {visitor.total_com_calls} COM calls without transaction management",
+                        description=(
+                            f"Found {visitor.total_com_calls} COM calls "
+                            "without transaction management"
+                        ),
                         file_path="",
                         line_number=1,
                         quality_impact=-0.3,
-                        suggested_fix="Wrap multiple AutoCAD operations in StartTransaction/CommitTransaction blocks",
+                        suggested_fix=(
+                            "Wrap multiple AutoCAD operations in "
+                            "StartTransaction/CommitTransaction blocks"
+                        ),
                     )
                 )
 
             # Check error handling coverage
             if visitor.total_com_calls > 0:
-                coverage_ratio = visitor.error_handling_coverage / visitor.total_com_calls
+                coverage_ratio = (
+                    visitor.error_handling_coverage / visitor.total_com_calls
+                )
                 if coverage_ratio < 0.5:
                     findings.append(
                         ReviewFinding(
@@ -756,11 +809,16 @@ class AutomatedCodeReviewer:
                             category=ReviewCategory.RELIABILITY,
                             severity=ReviewSeverity.MAJOR,
                             title="Low Error Handling Coverage",
-                            description=f"Only {coverage_ratio:.1%} of COM calls are protected by error handling",
+                            description=(
+                                f"Only {coverage_ratio:.1%} of COM calls are "
+                                "protected by error handling"
+                            ),
                             file_path="",
                             line_number=1,
                             quality_impact=-0.4,
-                            suggested_fix="Add try-except blocks around AutoCAD COM operations",
+                            suggested_fix=(
+                                "Add try-except blocks around AutoCAD COM operations"
+                            ),
                         )
                     )
 
@@ -769,7 +827,9 @@ class AutomatedCodeReviewer:
 
         return findings
 
-    def _analyze_performance_patterns(self, code: str, ast_tree: ast.AST) -> List[ReviewFinding]:
+    def _analyze_performance_patterns(
+        self, code: str, ast_tree: ast.AST
+    ) -> list[ReviewFinding]:
         """Analyze performance-related patterns."""
         findings = []
 
@@ -782,7 +842,8 @@ class AutomatedCodeReviewer:
                         category=ReviewCategory.PERFORMANCE,
                         severity=ReviewSeverity.MINOR,
                         title="Potentially Inefficient Loop",
-                        description="Consider using list comprehensions or vectorized operations",
+                        description="Consider using list comprehensions or "
+                        "vectorized operations",
                         file_path="",
                         line_number=1,
                         quality_impact=-0.1,
@@ -800,11 +861,17 @@ class AutomatedCodeReviewer:
                             category=ReviewCategory.PERFORMANCE,
                             severity=ReviewSeverity.MINOR,
                             title=f"Repeated Expensive Operation: {op}",
-                            description=f"'{op}' is called {count} times - consider caching the reference",
+                            description=(
+                                f"'{op}' is called {count} times - consider "
+                                "caching the reference"
+                            ),
                             file_path="",
                             line_number=1,
                             quality_impact=-0.2,
-                            suggested_fix=f"Cache {op} reference at the beginning: {op.lower()} = doc.{op}",
+                            suggested_fix=(
+                                f"Cache {op} reference at the beginning: "
+                                f"{op.lower()} = doc.{op}"
+                            ),
                         )
                     )
 
@@ -813,7 +880,9 @@ class AutomatedCodeReviewer:
 
         return findings
 
-    def _analyze_security_patterns(self, code: str, ast_tree: ast.AST) -> List[ReviewFinding]:
+    def _analyze_security_patterns(
+        self, code: str, ast_tree: ast.AST
+    ) -> list[ReviewFinding]:
         """Analyze security-related patterns."""
         findings = []
 
@@ -828,7 +897,9 @@ class AutomatedCodeReviewer:
                             category=ReviewCategory.SECURITY,
                             severity=ReviewSeverity.CRITICAL,
                             title=f"Dangerous Function: {func}()",
-                            description=f"Using {func}() can be dangerous and should be avoided",
+                            description=(
+                                f"Using {func}() can be dangerous and should be avoided"
+                            ),
                             file_path="",
                             line_number=1,
                             quality_impact=-1.0,
@@ -848,7 +919,10 @@ class AutomatedCodeReviewer:
                     line_number = code[: match.start()].count("\n") + 1
                     findings.append(
                         ReviewFinding(
-                            id=f"hardcoded_secret_{line_number}_{int(time.time() * 1000) % 1000:06d}",
+                            id=(
+                                f"hardcoded_secret_{line_number}_"
+                                f"{int(time.time() * 1000) % 1000:06d}"
+                            ),
                             category=ReviewCategory.SECURITY,
                             severity=ReviewSeverity.MAJOR,
                             title="Hardcoded Secret",
@@ -856,7 +930,8 @@ class AutomatedCodeReviewer:
                             file_path="",
                             line_number=line_number,
                             quality_impact=-0.6,
-                            suggested_fix="Use environment variables or secure configuration files",
+                            suggestion="Move sensitive data to environment variables or "
+                            "configuration files",
                         )
                     )
 
@@ -866,7 +941,7 @@ class AutomatedCodeReviewer:
         return findings
 
     def _calculate_quality_metrics(
-        self, code: str, ast_tree: ast.AST, findings: List[ReviewFinding]
+        self, code: str, ast_tree: ast.AST, findings: list[ReviewFinding]
     ) -> QualityMetrics:
         """Calculate comprehensive quality metrics."""
         metrics = QualityMetrics(overall_score=10.0)  # Start with perfect score
@@ -877,7 +952,9 @@ class AutomatedCodeReviewer:
             metrics.lines_of_code = len([line for line in lines if line.strip()])
 
             # Calculate comment density
-            comment_lines = len([line for line in lines if line.strip().startswith("#")])
+            comment_lines = len(
+                [line for line in lines if line.strip().startswith("#")]
+            )
             metrics.comment_density = comment_lines / max(metrics.lines_of_code, 1)
 
             # Calculate cyclomatic complexity
@@ -892,7 +969,9 @@ class AutomatedCodeReviewer:
 
             # Calculate individual scores
             base_score = 10.0
-            metrics.style_score = max(0.0, base_score + category_impacts[ReviewCategory.STYLE])
+            metrics.style_score = max(
+                0.0, base_score + category_impacts[ReviewCategory.STYLE]
+            )
             metrics.performance_score = max(
                 0.0, base_score + category_impacts[ReviewCategory.PERFORMANCE]
             )
@@ -909,12 +988,15 @@ class AutomatedCodeReviewer:
                 0.0, base_score + category_impacts[ReviewCategory.DOCUMENTATION]
             )
             metrics.autocad_best_practices_score = max(
-                0.0, base_score + category_impacts[ReviewCategory.AUTOCAD_BEST_PRACTICES]
+                0.0,
+                base_score + category_impacts[ReviewCategory.AUTOCAD_BEST_PRACTICES],
             )
 
             # Complexity score (inverse relationship)
             if metrics.lines_of_code > 0:
-                complexity_ratio = metrics.cyclomatic_complexity / metrics.lines_of_code
+                complexity_ratio = (
+                    metrics.cyclomatic_complexity / metrics.lines_of_code
+                )
                 metrics.complexity_score = max(0.0, 10.0 - complexity_ratio * 50)
             else:
                 metrics.complexity_score = 10.0
@@ -924,11 +1006,14 @@ class AutomatedCodeReviewer:
                 metrics.style_score * self.quality_score_weights["style"],
                 metrics.performance_score * self.quality_score_weights["performance"],
                 metrics.security_score * self.quality_score_weights["security"],
-                metrics.maintainability_score * self.quality_score_weights["maintainability"],
+                metrics.maintainability_score
+                * self.quality_score_weights["maintainability"],
                 metrics.reliability_score * self.quality_score_weights["reliability"],
-                metrics.documentation_score * self.quality_score_weights["documentation"],
+                metrics.documentation_score
+                * self.quality_score_weights["documentation"],
                 metrics.complexity_score * self.quality_score_weights["complexity"],
-                metrics.autocad_best_practices_score * self.quality_score_weights["autocad"],
+                metrics.autocad_best_practices_score
+                * self.quality_score_weights["autocad"],
             ]
 
             metrics.overall_score = sum(weighted_scores)
@@ -939,7 +1024,7 @@ class AutomatedCodeReviewer:
 
         return metrics
 
-    def _initialize_score_weights(self) -> Dict[str, float]:
+    def _initialize_score_weights(self) -> dict[str, float]:
         """Initialize quality score weights."""
         return {
             "style": 0.10,
@@ -952,17 +1037,19 @@ class AutomatedCodeReviewer:
             "autocad": 0.05,
         }
 
-    def _load_quality_standards(self) -> Dict[str, Any]:
+    def _load_quality_standards(self) -> dict[str, Any]:
         """Load quality standards from a configuration file."""
         # In a real implementation, this would load from a JSON or YAML file.
         return {}
 
-    def _load_autocad_best_practices(self) -> Dict[str, Any]:
+    def _load_autocad_best_practices(self) -> dict[str, Any]:
         """Load AutoCAD best practices from a configuration file."""
         # In a real implementation, this would load from a JSON or YAML file.
         return {}
 
-    def _process_and_rank_findings(self, findings: List[ReviewFinding]) -> List[ReviewFinding]:
+    def _process_and_rank_findings(
+        self, findings: list[ReviewFinding]
+    ) -> list[ReviewFinding]:
         return sorted(findings, key=lambda f: (f.severity.value, f.quality_impact))
 
     def _generate_summary_statistics(self, report: CodeReviewReport) -> None:
@@ -970,7 +1057,9 @@ class AutomatedCodeReviewer:
         report.findings_by_severity = Counter(f.severity.name for f in report.findings)
         report.findings_by_category = Counter(f.category.name for f in report.findings)
 
-    def _calculate_compliance_scores(self, findings: List[ReviewFinding]) -> Dict[str, float]:
+    def _calculate_compliance_scores(
+        self, findings: list[ReviewFinding]
+    ) -> dict[str, float]:
         return {}
 
     def _calculate_best_practices_adherence(self, ast_tree: ast.AST) -> float:
@@ -979,7 +1068,7 @@ class AutomatedCodeReviewer:
     def _calculate_reviewer_confidence(self, report: CodeReviewReport) -> float:
         return 0.95
 
-    def _calculate_trend(self, scores: List[float]) -> str:
+    def _calculate_trend(self, scores: list[float]) -> str:
         if len(scores) < 2:
             return "stable"
         if scores[-1] > scores[0]:
@@ -989,19 +1078,29 @@ class AutomatedCodeReviewer:
         else:
             return "stable"
 
-    def _analyze_findings_trend(self, history: List[CodeReviewReport]) -> Dict[str, Any]:
+    def _analyze_findings_trend(
+        self, history: list[CodeReviewReport]
+    ) -> dict[str, Any]:
         return {}
 
-    def _aggregate_category_breakdown(self, reports: List[CodeReviewReport]) -> Dict[str, int]:
+    def _aggregate_category_breakdown(
+        self, reports: list[CodeReviewReport]
+    ) -> dict[str, int]:
         return {}
 
-    def _aggregate_severity_breakdown(self, reports: List[CodeReviewReport]) -> Dict[str, int]:
+    def _aggregate_severity_breakdown(
+        self, reports: list[CodeReviewReport]
+    ) -> dict[str, int]:
         return {}
 
-    def _identify_top_issues(self, reports: List[CodeReviewReport]) -> List[Dict[str, Any]]:
+    def _identify_top_issues(
+        self, reports: list[CodeReviewReport]
+    ) -> list[dict[str, Any]]:
         return []
 
-    def _calculate_quality_distribution(self, reports: List[CodeReviewReport]) -> Dict[str, int]:
+    def _calculate_quality_distribution(
+        self, reports: list[CodeReviewReport]
+    ) -> dict[str, int]:
         return {}
 
 
@@ -1011,26 +1110,26 @@ class CyclomaticComplexityCalculator(ast.NodeVisitor):
     def __init__(self):
         self.complexity = 1  # Base complexity
 
-    def visit_If(self, node):
+    def visit_if(self, node):
         self.complexity += 1
         self.generic_visit(node)
 
-    def visit_While(self, node):
+    def visit_while(self, node):
         self.complexity += 1
         self.generic_visit(node)
 
-    def visit_For(self, node):
+    def visit_for(self, node):
         self.complexity += 1
         self.generic_visit(node)
 
-    def visit_ExceptHandler(self, node):
+    def visit_except_handler(self, node):
         self.complexity += 1
         self.generic_visit(node)
 
-    def visit_With(self, node):
+    def visit_with(self, node):
         self.complexity += 1
         self.generic_visit(node)
 
-    def visit_BoolOp(self, node):
+    def visit_bool_op(self, node):
         self.complexity += len(node.values) - 1
         self.generic_visit(node)

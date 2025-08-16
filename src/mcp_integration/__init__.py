@@ -7,10 +7,10 @@ Provides VS Code integration, interactive development tools, and advanced
 MCP capabilities while maintaining 100% backward compatibility.
 """
 
-from .enhanced_mcp_server import EnhancedMCPServer
-from .vscode_tools import VSCodeTools
 from .context_manager import ContextManager
+from .enhanced_mcp_server import EnhancedMCPServer
 from .security_manager import SecurityManager
+from .vscode_tools import VSCodeTools
 
 __all__ = ["EnhancedMCPServer", "VSCodeTools", "ContextManager", "SecurityManager"]
 

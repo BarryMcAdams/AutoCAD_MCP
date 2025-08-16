@@ -10,7 +10,7 @@ import asyncio
 import json
 import logging
 import sys
-from typing import Any, Sequence
+from typing import Any
 
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
@@ -21,16 +21,14 @@ from mcp.server.stdio import stdio_server
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stderr)  # Claude Desktop reads from stderr
-    ]
+    handlers=[logging.StreamHandler(sys.stderr)],  # Claude Desktop reads from stderr
 )
 logger = logging.getLogger("autocad-mcp")
 
 # Import our MCP tools and utilities
 try:
-    from src.utils import get_autocad_instance, validate_point3d, extract_entity_properties
     from src.algorithms.lscm import unfold_surface_lscm
+    from src.utils import extract_entity_properties, get_autocad_instance, validate_point3d
 except ImportError as e:
     logger.error(f"Failed to import AutoCAD modules: {e}")
     # Continue with basic functionality if advanced modules aren't available
@@ -38,6 +36,7 @@ except ImportError as e:
 
 # Initialize the MCP server
 server = Server("autocad-mcp")
+
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
@@ -54,18 +53,18 @@ async def handle_list_tools() -> list[types.Tool]:
                         "items": {"type": "number"},
                         "minItems": 3,
                         "maxItems": 3,
-                        "description": "Starting point [x, y, z]"
+                        "description": "Starting point [x, y, z]",
                     },
                     "end_point": {
-                        "type": "array", 
+                        "type": "array",
                         "items": {"type": "number"},
                         "minItems": 3,
                         "maxItems": 3,
-                        "description": "Ending point [x, y, z]"
-                    }
+                        "description": "Ending point [x, y, z]",
+                    },
                 },
-                "required": ["start_point", "end_point"]
-            }
+                "required": ["start_point", "end_point"],
+            },
         ),
         types.Tool(
             name="draw_circle",
@@ -78,16 +77,12 @@ async def handle_list_tools() -> list[types.Tool]:
                         "items": {"type": "number"},
                         "minItems": 3,
                         "maxItems": 3,
-                        "description": "Center point [x, y, z]"
+                        "description": "Center point [x, y, z]",
                     },
-                    "radius": {
-                        "type": "number",
-                        "minimum": 0,
-                        "description": "Circle radius"
-                    }
+                    "radius": {"type": "number", "minimum": 0, "description": "Circle radius"},
                 },
-                "required": ["center", "radius"]
-            }
+                "required": ["center", "radius"],
+            },
         ),
         types.Tool(
             name="extrude_profile",
@@ -101,17 +96,17 @@ async def handle_list_tools() -> list[types.Tool]:
                             "type": "array",
                             "items": {"type": "number"},
                             "minItems": 2,
-                            "maxItems": 3
+                            "maxItems": 3,
                         },
-                        "description": "List of 2D/3D points defining the profile"
+                        "description": "List of 2D/3D points defining the profile",
                     },
                     "extrude_height": {
                         "type": "number",
-                        "description": "Height to extrude the profile"
-                    }
+                        "description": "Height to extrude the profile",
+                    },
                 },
-                "required": ["profile_points", "extrude_height"]
-            }
+                "required": ["profile_points", "extrude_height"],
+            },
         ),
         types.Tool(
             name="revolve_profile",
@@ -121,65 +116,48 @@ async def handle_list_tools() -> list[types.Tool]:
                 "properties": {
                     "profile_points": {
                         "type": "array",
-                        "items": {
-                            "type": "array",
-                            "items": {"type": "number"}
-                        },
-                        "description": "List of points defining the profile"
+                        "items": {"type": "array", "items": {"type": "number"}},
+                        "description": "List of points defining the profile",
                     },
                     "axis_start": {
                         "type": "array",
                         "items": {"type": "number"},
                         "minItems": 3,
                         "maxItems": 3,
-                        "description": "Start point of revolution axis"
+                        "description": "Start point of revolution axis",
                     },
                     "axis_end": {
                         "type": "array",
-                        "items": {"type": "number"}, 
+                        "items": {"type": "number"},
                         "minItems": 3,
                         "maxItems": 3,
-                        "description": "End point of revolution axis"
+                        "description": "End point of revolution axis",
                     },
-                    "angle": {
-                        "type": "number",
-                        "description": "Revolution angle in degrees"
-                    }
+                    "angle": {"type": "number", "description": "Revolution angle in degrees"},
                 },
-                "required": ["profile_points", "axis_start", "axis_end", "angle"]
-            }
+                "required": ["profile_points", "axis_start", "axis_end", "angle"],
+            },
         ),
         types.Tool(
             name="list_entities",
             description="List all entities in the current AutoCAD drawing",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False
-            }
+            inputSchema={"type": "object", "properties": {}, "additionalProperties": False},
         ),
         types.Tool(
-            name="get_entity_info", 
+            name="get_entity_info",
             description="Get detailed information about a specific entity",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "entity_id": {
-                        "type": "integer",
-                        "description": "Entity ID to query"
-                    }
+                    "entity_id": {"type": "integer", "description": "Entity ID to query"}
                 },
-                "required": ["entity_id"]
-            }
+                "required": ["entity_id"],
+            },
         ),
         types.Tool(
             name="server_status",
             description="Get MCP server and AutoCAD connection status",
-            inputSchema={
-                "type": "object", 
-                "properties": {},
-                "additionalProperties": False
-            }
+            inputSchema={"type": "object", "properties": {}, "additionalProperties": False},
         ),
         types.Tool(
             name="unfold_surface_lscm",
@@ -193,10 +171,10 @@ async def handle_list_tools() -> list[types.Tool]:
                             "type": "array",
                             "items": {"type": "number"},
                             "minItems": 3,
-                            "maxItems": 3
+                            "maxItems": 3,
                         },
                         "description": "Array of 3D vertex coordinates [[x1,y1,z1], [x2,y2,z2], ...]",
-                        "minItems": 3
+                        "minItems": 3,
                     },
                     "triangles": {
                         "type": "array",
@@ -204,23 +182,23 @@ async def handle_list_tools() -> list[types.Tool]:
                             "type": "array",
                             "items": {"type": "integer", "minimum": 0},
                             "minItems": 3,
-                            "maxItems": 3
+                            "maxItems": 3,
                         },
                         "description": "Array of triangle vertex indices [[i1,j1,k1], [i2,j2,k2], ...]",
-                        "minItems": 1
+                        "minItems": 1,
                     },
                     "description": "Optional boundary vertex constraints [[vertex_index, u_coord, v_coord], ...]",
-                            "required": False,
+                    "required": False,
                     "tolerance": {
                         "type": "number",
                         "minimum": 0,
                         "default": 0.001,
-                        "description": "Distortion tolerance for manufacturing validation"
-                    }
+                        "description": "Distortion tolerance for manufacturing validation",
+                    },
                 },
-                "required": ["vertices", "triangles"]
-            }
-        )
+                "required": ["vertices", "triangles"],
+            },
+        ),
     ]
 
 
@@ -229,20 +207,22 @@ async def handle_call_tool(name: str, arguments: dict[str, Any] | None) -> list[
     """Handle tool calls from Claude Desktop."""
     if arguments is None:
         arguments = {}
-        
+
     try:
         if name == "draw_line":
             result = await _draw_line(arguments["start_point"], arguments["end_point"])
         elif name == "draw_circle":
             result = await _draw_circle(arguments["center"], arguments["radius"])
         elif name == "extrude_profile":
-            result = await _extrude_profile(arguments["profile_points"], arguments["extrude_height"])
+            result = await _extrude_profile(
+                arguments["profile_points"], arguments["extrude_height"]
+            )
         elif name == "revolve_profile":
             result = await _revolve_profile(
-                arguments["profile_points"], 
+                arguments["profile_points"],
                 arguments["axis_start"],
-                arguments["axis_end"], 
-                arguments["angle"]
+                arguments["axis_end"],
+                arguments["angle"],
             )
         elif name == "list_entities":
             result = await _list_entities()
@@ -255,24 +235,20 @@ async def handle_call_tool(name: str, arguments: dict[str, Any] | None) -> list[
                 arguments["vertices"],
                 arguments["triangles"],
                 arguments.get("boundary_constraints"),
-                arguments.get("tolerance", 0.001)
+                arguments.get("tolerance", 0.001),
             )
         else:
-            result = json.dumps({
-                "success": False,
-                "error": f"Unknown tool: {name}",
-                "message": "Tool not found"
-            })
-            
+            result = json.dumps(
+                {"success": False, "error": f"Unknown tool: {name}", "message": "Tool not found"}
+            )
+
         return [types.TextContent(type="text", text=result)]
-        
+
     except Exception as e:
         logger.error(f"Error in tool {name}: {e}")
-        error_result = json.dumps({
-            "success": False,
-            "error": str(e),
-            "message": f"Failed to execute {name}"
-        })
+        error_result = json.dumps(
+            {"success": False, "error": str(e), "message": f"Failed to execute {name}"}
+        )
         return [types.TextContent(type="text", text=error_result)]
 
 
@@ -284,20 +260,18 @@ async def _draw_line(start_point: list[float], end_point: list[float]) -> str:
         end = validate_point3d(end_point)
 
         line = acad.model.AddLine(start, end)
-        return json.dumps({
-            "success": True,
-            "message": "Line created successfully",
-            "entity_id": line.ObjectID,
-            "start_point": start_point,
-            "end_point": end_point,
-        })
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Line created successfully",
+                "entity_id": line.ObjectID,
+                "start_point": start_point,
+                "end_point": end_point,
+            }
+        )
     except Exception as e:
         logger.error(f"Error drawing line: {e}")
-        return json.dumps({
-            "success": False, 
-            "error": str(e),
-            "message": "Failed to draw line"
-        })
+        return json.dumps({"success": False, "error": str(e), "message": "Failed to draw line"})
 
 
 async def _draw_circle(center: list[float], radius: float) -> str:
@@ -307,20 +281,18 @@ async def _draw_circle(center: list[float], radius: float) -> str:
         center_point = validate_point3d(center)
 
         circle = acad.model.AddCircle(center_point, radius)
-        return json.dumps({
-            "success": True,
-            "message": "Circle created successfully",
-            "entity_id": circle.ObjectID,
-            "center": center,
-            "radius": radius,
-        })
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Circle created successfully",
+                "entity_id": circle.ObjectID,
+                "center": center,
+                "radius": radius,
+            }
+        )
     except Exception as e:
         logger.error(f"Error drawing circle: {e}")
-        return json.dumps({
-            "success": False,
-            "error": str(e), 
-            "message": "Failed to draw circle"
-        })
+        return json.dumps({"success": False, "error": str(e), "message": "Failed to draw circle"})
 
 
 async def _extrude_profile(profile_points: list[list[float]], extrude_height: float) -> str:
@@ -333,27 +305,24 @@ async def _extrude_profile(profile_points: list[list[float]], extrude_height: fl
 
         # Create extruded solid
         solid = acad.model.AddExtrudedSolid(polyline, extrude_height)
-        return json.dumps({
-            "success": True,
-            "message": "Extruded solid created successfully",
-            "entity_id": solid.ObjectID,
-            "profile_points": profile_points,
-            "extrude_height": extrude_height,
-        })
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Extruded solid created successfully",
+                "entity_id": solid.ObjectID,
+                "profile_points": profile_points,
+                "extrude_height": extrude_height,
+            }
+        )
     except Exception as e:
         logger.error(f"Error creating extrusion: {e}")
-        return json.dumps({
-            "success": False,
-            "error": str(e),
-            "message": "Failed to create extrusion"
-        })
+        return json.dumps(
+            {"success": False, "error": str(e), "message": "Failed to create extrusion"}
+        )
 
 
 async def _revolve_profile(
-    profile_points: list[list[float]], 
-    axis_start: list[float], 
-    axis_end: list[float], 
-    angle: float
+    profile_points: list[list[float]], axis_start: list[float], axis_end: list[float], angle: float
 ) -> str:
     """Create a 3D solid by revolving a profile around an axis."""
     try:
@@ -365,26 +334,26 @@ async def _revolve_profile(
         # Create revolved solid
         axis_vector = [
             axis_end[0] - axis_start[0],
-            axis_end[1] - axis_start[1], 
+            axis_end[1] - axis_start[1],
             axis_end[2] - axis_start[2],
         ]
         solid = acad.model.AddRevolvedSolid(polyline, axis_start, axis_vector, angle)
-        return json.dumps({
-            "success": True,
-            "message": "Revolved solid created successfully",
-            "entity_id": solid.ObjectID,
-            "profile_points": profile_points,
-            "axis_start": axis_start,
-            "axis_end": axis_end,
-            "angle": angle,
-        })
+        return json.dumps(
+            {
+                "success": True,
+                "message": "Revolved solid created successfully",
+                "entity_id": solid.ObjectID,
+                "profile_points": profile_points,
+                "axis_start": axis_start,
+                "axis_end": axis_end,
+                "angle": angle,
+            }
+        )
     except Exception as e:
         logger.error(f"Error creating revolution: {e}")
-        return json.dumps({
-            "success": False,
-            "error": str(e),
-            "message": "Failed to create revolution"
-        })
+        return json.dumps(
+            {"success": False, "error": str(e), "message": "Failed to create revolution"}
+        )
 
 
 async def _list_entities() -> str:
@@ -394,11 +363,7 @@ async def _list_entities() -> str:
 
         entities = []
         for entity in acad.model.modelspace:
-            entity_info = {
-                "id": entity.ObjectID, 
-                "type": entity.ObjectName, 
-                "layer": entity.Layer
-            }
+            entity_info = {"id": entity.ObjectID, "type": entity.ObjectName, "layer": entity.Layer}
 
             # Add additional properties if available
             if hasattr(entity, "Length"):
@@ -410,18 +375,10 @@ async def _list_entities() -> str:
 
             entities.append(entity_info)
 
-        return json.dumps({
-            "success": True, 
-            "count": len(entities), 
-            "entities": entities
-        })
+        return json.dumps({"success": True, "count": len(entities), "entities": entities})
     except Exception as e:
         logger.error(f"Error listing entities: {e}")
-        return json.dumps({
-            "success": False,
-            "error": str(e),
-            "message": "Failed to list entities"
-        })
+        return json.dumps({"success": False, "error": str(e), "message": "Failed to list entities"})
 
 
 async def _get_entity_info(entity_id: int) -> str:
@@ -437,81 +394,82 @@ async def _get_entity_info(entity_id: int) -> str:
                 break
 
         if not entity:
-            return json.dumps({
-                "success": False,
-                "error": "Entity not found",
-                "message": f"No entity found with ID {entity_id}",
-            })
+            return json.dumps(
+                {
+                    "success": False,
+                    "error": "Entity not found",
+                    "message": f"No entity found with ID {entity_id}",
+                }
+            )
 
         properties = extract_entity_properties(entity)
-        return json.dumps({
-            "success": True, 
-            "entity": properties
-        })
+        return json.dumps({"success": True, "entity": properties})
     except Exception as e:
         logger.error(f"Error getting entity info: {e}")
-        return json.dumps({
-            "success": False,
-            "error": str(e),
-            "message": "Failed to get entity info"
-        })
+        return json.dumps(
+            {"success": False, "error": str(e), "message": "Failed to get entity info"}
+        )
 
 
 async def _unfold_surface_lscm(
-    vertices: list[list[float]], 
-    triangles: list[list[int]], 
+    vertices: list[list[float]],
+    triangles: list[list[int]],
     boundary_constraints: list[list[float]] = None,
-    tolerance: float = 0.001
+    tolerance: float = 0.001,
 ) -> str:
     """Advanced 3D surface unfolding using LSCM algorithm."""
     try:
         import numpy as np
-        logger.info(f"Starting LSCM surface unfolding: {len(vertices)} vertices, {len(triangles)} triangles")
-        
+
+        logger.info(
+            f"Starting LSCM surface unfolding: {len(vertices)} vertices, {len(triangles)} triangles"
+        )
+
         # Convert input data to numpy arrays
         vertices_array = np.array(vertices, dtype=np.float64)
         triangles_array = np.array(triangles, dtype=np.int32)
-        
+
         # Convert boundary constraints if provided
         boundary_constraints_converted = None
         if boundary_constraints:
-            boundary_constraints_converted = [(int(bc[0]), float(bc[1]), float(bc[2])) for bc in boundary_constraints]
-        
+            boundary_constraints_converted = [
+                (int(bc[0]), float(bc[1]), float(bc[2])) for bc in boundary_constraints
+            ]
+
         # Execute LSCM algorithm
         result = unfold_surface_lscm(
-            vertices_array, 
-            triangles_array, 
-            boundary_constraints_converted,
-            tolerance
+            vertices_array, triangles_array, boundary_constraints_converted, tolerance
         )
-        
+
         # Add algorithm metadata
         result["algorithm"] = "LSCM (Least Squares Conformal Mapping)"
         result["input_mesh"] = {
             "vertices_count": len(vertices),
             "triangles_count": len(triangles),
-            "boundary_constraints": len(boundary_constraints) if boundary_constraints else 0
+            "boundary_constraints": len(boundary_constraints) if boundary_constraints else 0,
         }
         result["performance"] = {
             "tolerance": tolerance,
-            "processing_method": "Advanced mathematical algorithm with research-grade accuracy"
+            "processing_method": "Advanced mathematical algorithm with research-grade accuracy",
         }
-        
+
         logger.info(f"LSCM unfolding completed: success={result['success']}")
         return json.dumps(result, indent=2)
-        
+
     except Exception as e:
         logger.error(f"Error in LSCM surface unfolding: {e}")
-        return json.dumps({
-            "success": False,
-            "error": str(e),
-            "algorithm": "LSCM (Least Squares Conformal Mapping)",
-            "message": "Failed to unfold surface using LSCM algorithm",
-            "input_mesh": {
-                "vertices_count": len(vertices) if vertices else 0,
-                "triangles_count": len(triangles) if triangles else 0
+        return json.dumps(
+            {
+                "success": False,
+                "error": str(e),
+                "algorithm": "LSCM (Least Squares Conformal Mapping)",
+                "message": "Failed to unfold surface using LSCM algorithm",
+                "input_mesh": {
+                    "vertices_count": len(vertices) if vertices else 0,
+                    "triangles_count": len(triangles) if triangles else 0,
+                },
             }
-        })
+        )
 
 
 async def _server_status() -> str:
@@ -520,29 +478,33 @@ async def _server_status() -> str:
         acad = get_autocad_instance()
         doc_name = acad.ActiveDocument.Name
 
-        return json.dumps({
-            "success": True,
-            "mcp_server": "running",
-            "autocad_connected": True,
-            "active_document": doc_name,
-            "tools_available": 8,
-            "tools_advanced": 1,
-            "advanced_algorithms": ["LSCM Surface Unfolding"],
-            "transport": "stdio",
-            "message": "MCP server is operational and connected to AutoCAD via Claude Desktop",
-        })
+        return json.dumps(
+            {
+                "success": True,
+                "mcp_server": "running",
+                "autocad_connected": True,
+                "active_document": doc_name,
+                "tools_available": 8,
+                "tools_advanced": 1,
+                "advanced_algorithms": ["LSCM Surface Unfolding"],
+                "transport": "stdio",
+                "message": "MCP server is operational and connected to AutoCAD via Claude Desktop",
+            }
+        )
     except Exception as e:
         logger.error(f"Error getting server status: {e}")
-        return json.dumps({
-            "success": False,
-            "error": str(e),
-            "mcp_server": "running", 
-            "autocad_connected": False,
-            "tools_available": 8,
-            "tools_advanced": 1,
-            "transport": "stdio",
-            "message": "MCP server running but AutoCAD connection failed"
-        })
+        return json.dumps(
+            {
+                "success": False,
+                "error": str(e),
+                "mcp_server": "running",
+                "autocad_connected": False,
+                "tools_available": 8,
+                "tools_advanced": 1,
+                "transport": "stdio",
+                "message": "MCP server running but AutoCAD connection failed",
+            }
+        )
 
 
 @server.list_resources()
@@ -578,9 +540,9 @@ async def handle_list_prompts() -> list[types.Prompt]:
                 types.PromptArgument(
                     name="topic",
                     description="Specific topic to get help with (optional)",
-                    required=False
+                    required=False,
                 )
-            ]
+            ],
         )
     ]
 
@@ -590,7 +552,7 @@ async def handle_get_prompt(name: str, arguments: dict[str, str] | None) -> type
     """Handle prompt requests."""
     if name == "autocad-help":
         topic = arguments.get("topic", "general") if arguments else "general"
-        
+
         help_content = f"""
 # AutoCAD MCP Server Help
 
@@ -628,15 +590,14 @@ async def handle_get_prompt(name: str, arguments: dict[str, str] | None) -> type
 ## Topic: {topic}
 {"This is general help. You can ask for specific topics." if topic == "general" else f"Help for {topic} topic."}
         """
-        
+
         return types.GetPromptResult(
             description="AutoCAD MCP Server help information",
             messages=[
                 types.PromptMessage(
-                    role="user",
-                    content=types.TextContent(type="text", text=help_content)
+                    role="user", content=types.TextContent(type="text", text=help_content)
                 )
-            ]
+            ],
         )
     else:
         raise ValueError(f"Unknown prompt: {name}")
@@ -653,11 +614,11 @@ async def main():
             experimental_capabilities={},
         ),
     )
-    
+
     logger.info("Starting AutoCAD MCP Server for Claude Desktop...")
     logger.info("Server capabilities: tools, resources, prompts")
     logger.info("Transport: stdio")
-    
+
     try:
         # Run the server with stdio transport for Claude Desktop
         async with stdio_server() as (read_stream, write_stream):

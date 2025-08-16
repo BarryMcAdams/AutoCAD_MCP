@@ -9,10 +9,10 @@ and VS Code IntelliSense integration for enhanced development experience.
 Week 4 Implementation - Phase 2: Interactive Development Tools
 """
 
+from .intellisense_provider import IntelliSenseProvider
+from .method_discoverer import MethodDiscoverer
 from .object_inspector import ObjectInspector
 from .property_analyzer import PropertyAnalyzer
-from .method_discoverer import MethodDiscoverer
-from .intellisense_provider import IntelliSenseProvider
 
 __all__ = ["ObjectInspector", "PropertyAnalyzer", "MethodDiscoverer", "IntelliSenseProvider"]
 

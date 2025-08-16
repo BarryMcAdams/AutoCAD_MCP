@@ -5,31 +5,31 @@ Generates AutoLISP code from natural language descriptions and structured requir
 Leverages templates and best practices for professional AutoCAD automation.
 """
 
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass
 import re
-import json
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class AutoLISPFunction:
     """Represents an AutoLISP function definition."""
+
     name: str
-    parameters: List[str]
+    parameters: list[str]
     description: str
     code_template: str
-    examples: List[str]
+    examples: list[str]
 
 
 class AutoLISPGenerator:
     """Generates AutoLISP code for AutoCAD automation tasks."""
-    
+
     def __init__(self):
         self.functions = self._initialize_functions()
         self.templates = self._initialize_templates()
         self.patterns = self._initialize_patterns()
-    
-    def _initialize_functions(self) -> Dict[str, AutoLISPFunction]:
+
+    def _initialize_functions(self) -> dict[str, AutoLISPFunction]:
         """Initialize common AutoLISP function templates."""
         return {
             "draw_line": AutoLISPFunction(
@@ -40,20 +40,18 @@ class AutoLISPGenerator:
   (command "LINE" pt1 pt2 "")
   (princ)
 )""",
-                examples=["(c:draw-line '(0 0 0) '(100 100 0))"]
+                examples=["(c:draw-line '(0 0 0) '(100 100 0))"],
             ),
-            
             "draw_circle": AutoLISPFunction(
-                name="draw-circle", 
+                name="draw-circle",
                 parameters=["center", "radius"],
                 description="Draw a circle at center point with given radius",
                 code_template="""(defun c:draw-circle (center radius / )
   (command "CIRCLE" center radius)
   (princ)
 )""",
-                examples=["(c:draw-circle '(50 50 0) 25)"]
+                examples=["(c:draw-circle '(50 50 0) 25)"],
             ),
-            
             "draw_rectangle": AutoLISPFunction(
                 name="draw-rectangle",
                 parameters=["corner1", "corner2"],
@@ -62,9 +60,8 @@ class AutoLISPGenerator:
   (command "RECTANGLE" corner1 corner2)
   (princ)
 )""",
-                examples=["(c:draw-rectangle '(0 0 0) '(100 50 0))"]
+                examples=["(c:draw-rectangle '(0 0 0) '(100 50 0))"],
             ),
-            
             "draw_polyline": AutoLISPFunction(
                 name="draw-polyline",
                 parameters=["points"],
@@ -77,9 +74,8 @@ class AutoLISPGenerator:
   (command "")
   (princ)
 )""",
-                examples=["(c:draw-polyline '((0 0 0) (50 0 0) (50 50 0) (0 50 0)))"]
+                examples=["(c:draw-polyline '((0 0 0) (50 0 0) (50 50 0) (0 50 0)))"],
             ),
-            
             "select_all": AutoLISPFunction(
                 name="select-all",
                 parameters=["entity-type"],
@@ -97,9 +93,8 @@ class AutoLISPGenerator:
     )
   )
 )""",
-                examples=["(c:select-all \"LINE\")", "(c:select-all \"CIRCLE\")"]
+                examples=['(c:select-all "LINE")', '(c:select-all "CIRCLE")'],
             ),
-            
             "get_entity_info": AutoLISPFunction(
                 name="get-entity-info",
                 parameters=["entity"],
@@ -116,9 +111,8 @@ class AutoLISPGenerator:
     (princ "\\nInvalid entity.")
   )
 )""",
-                examples=["(c:get-entity-info (car (entsel \"Select entity: \")))"]
+                examples=['(c:get-entity-info (car (entsel "Select entity: ")))'],
             ),
-            
             "batch_process": AutoLISPFunction(
                 name="batch-process",
                 parameters=["selection-set", "operation"],
@@ -132,11 +126,11 @@ class AutoLISPGenerator:
   )
   (princ (strcat "Processed " (itoa (sslength ss)) " entities."))
 )""",
-                examples=["(c:batch-process (ssget) 'erase-entity)"]
-            )
+                examples=["(c:batch-process (ssget) 'erase-entity)"],
+            ),
         }
-    
-    def _initialize_templates(self) -> Dict[str, str]:
+
+    def _initialize_templates(self) -> dict[str, str]:
         """Initialize code templates for common patterns."""
         return {
             "basic_command": """(defun c:{command_name} ( / {local_vars})
@@ -144,14 +138,12 @@ class AutoLISPGenerator:
   {code_body}
   (princ)
 )""",
-            
             "parametric_command": """(defun c:{command_name} ({parameters} / {local_vars})
   ;; {description}
   ;; Parameters: {param_descriptions}
   {code_body}
   (princ)
 )""",
-            
             "selection_command": """(defun c:{command_name} ( / ss i ent {local_vars})
   ;; {description}
   (setq ss (ssget))
@@ -169,7 +161,6 @@ class AutoLISPGenerator:
   )
   (princ)
 )""",
-            
             "user_input_command": """(defun c:{command_name} ( / {input_vars} {local_vars})
   ;; {description}
   {input_prompts}
@@ -182,7 +173,6 @@ class AutoLISPGenerator:
   )
   (princ)
 )""",
-            
             "error_handling": """(defun c:{command_name} ( / {local_vars})
   ;; {description}
   (if (not (and {preconditions}))
@@ -191,7 +181,6 @@ class AutoLISPGenerator:
       (exit)
     )
   )
-  
   ;; Main operation with error handling
   (if (vl-catch-all-error-p
         (setq result (vl-catch-all-apply '{operation} {parameters})))
@@ -205,49 +194,60 @@ class AutoLISPGenerator:
     )
   )
   (princ)
-)"""
+)""",
         }
-    
-    def _initialize_patterns(self) -> Dict[str, Dict[str, Any]]:
+
+    def _initialize_patterns(self) -> dict[str, dict[str, Any]]:
         """Initialize pattern recognition for code generation."""
         return {
             "drawing_operations": {
                 "keywords": ["draw", "create", "make"],
                 "entities": {
-                    "line": {"function": "draw_line", "params": ["start_point", "end_point"]},
-                    "circle": {"function": "draw_circle", "params": ["center", "radius"]},
-                    "rectangle": {"function": "draw_rectangle", "params": ["corner1", "corner2"]},
-                    "polyline": {"function": "draw_polyline", "params": ["points"]}
-                }
+                    "line": {
+                        "function": "draw_line",
+                        "params": ["start_point", "end_point"],
+                    },
+                    "circle": {
+                        "function": "draw_circle",
+                        "params": ["center", "radius"],
+                    },
+                    "rectangle": {
+                        "function": "draw_rectangle",
+                        "params": ["corner1", "corner2"],
+                    },
+                    "polyline": {"function": "draw_polyline", "params": ["points"]},
+                },
             },
             "selection_operations": {
                 "keywords": ["select", "find", "get"],
                 "patterns": {
                     "all": "select_all",
-                    "by_type": "select_by_type", 
-                    "by_layer": "select_by_layer"
-                }
+                    "by_type": "select_by_type",
+                    "by_layer": "select_by_layer",
+                },
             },
             "modification_operations": {
                 "keywords": ["move", "copy", "rotate", "scale", "modify"],
                 "commands": {
                     "move": "MOVE",
                     "copy": "COPY",
-                    "rotate": "ROTATE", 
-                    "scale": "SCALE"
-                }
+                    "rotate": "ROTATE",
+                    "scale": "SCALE",
+                },
             },
             "batch_operations": {
                 "keywords": ["batch", "multiple", "all", "process"],
-                "template": "selection_command"
-            }
+                "template": "selection_command",
+            },
         }
-    
-    def generate_code(self, description: str, complexity: str = "basic") -> Dict[str, Any]:
+
+    def generate_code(
+        self, description: str, complexity: str = "basic"
+    ) -> dict[str, Any]:
         """Generate AutoLISP code from natural language description."""
         # Parse the description
         parsed = self._parse_description(description)
-        
+
         # Determine the appropriate template and approach
         if parsed["operation_type"] == "drawing":
             return self._generate_drawing_code(parsed, complexity)
@@ -259,48 +259,63 @@ class AutoLISPGenerator:
             return self._generate_batch_code(parsed, complexity)
         else:
             return self._generate_generic_code(parsed, complexity)
-    
-    def _parse_description(self, description: str) -> Dict[str, Any]:
+
+    def _parse_description(self, description: str) -> dict[str, Any]:
         """Parse natural language description into structured data."""
         desc_lower = description.lower()
-        
+
         # Identify operation type
         operation_type = "generic"
         for pattern_name, pattern_info in self.patterns.items():
             if any(keyword in desc_lower for keyword in pattern_info["keywords"]):
                 operation_type = pattern_name.replace("_operations", "")
                 break
-        
+
         # Extract entities mentioned
         entities = []
-        entity_keywords = ["line", "circle", "rectangle", "polyline", "arc", "text", "block"]
+        entity_keywords = [
+            "line",
+            "circle",
+            "rectangle",
+            "polyline",
+            "arc",
+            "text",
+            "block",
+        ]
         for entity in entity_keywords:
             if entity in desc_lower:
                 entities.append(entity)
-        
+
         # Extract parameters/values
-        numbers = re.findall(r'\b\d+(?:\.\d+)?\b', description)
-        coordinates = re.findall(r'\(?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?:,\s*(-?\d+(?:\.\d+)?))?\s*\)?', description)
-        
+        numbers = re.findall(r"\b\d+(?:\.\d+)?\b", description)
+        coordinates = re.findall(
+            r"\(?\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?:,\s*(-?\d+(?:\.\d+)?))?\s*\)?",
+            description,
+        )
+
         # Identify command name from description
         command_name = self._extract_command_name(description)
-        
+
         return {
             "operation_type": operation_type,
             "entities": entities,
             "numbers": [float(n) for n in numbers],
-            "coordinates": [[float(x) if x else 0 for x in coord] for coord in coordinates],
+            "coordinates": [
+                [float(x) if x else 0 for x in coord] for coord in coordinates
+            ],
             "command_name": command_name,
-            "description": description
+            "description": description,
         }
-    
+
     def _extract_command_name(self, description: str) -> str:
         """Extract or generate appropriate command name."""
         # Try to find explicit command name
-        cmd_match = re.search(r'command\s+(?:called\s+)?["\']?(\w+)["\']?', description.lower())
+        cmd_match = re.search(
+            r'command\s+(?:called\s+)?["\']?(\w+)["\']?', description.lower()
+        )
         if cmd_match:
             return cmd_match.group(1)
-        
+
         # Generate from key actions
         desc_lower = description.lower()
         if "draw line" in desc_lower:
@@ -315,35 +330,35 @@ class AutoLISPGenerator:
             return "batchprocess"
         else:
             # Generate generic name
-            words = re.findall(r'\b\w+\b', desc_lower)
-            return ''.join(word for word in words[:2] if len(word) > 2)
-    
-    def _generate_drawing_code(self, parsed: Dict[str, Any], complexity: str) -> Dict[str, Any]:
+            words = re.findall(r"\b\w+\b", desc_lower)
+            return "".join(word for word in words[:2] if len(word) > 2)
+
+    def _generate_drawing_code(
+        self, parsed: dict[str, Any], complexity: str
+    ) -> dict[str, Any]:
         """Generate code for drawing operations."""
         if not parsed["entities"]:
             return {"error": "No drawing entities specified"}
-        
+
         entity = parsed["entities"][0]  # Use first entity mentioned
-        
+
         # Map entity names to function names
         entity_mapping = {
             "line": "draw_line",
-            "circle": "draw_circle", 
+            "circle": "draw_circle",
             "rectangle": "draw_rectangle",
-            "polyline": "draw_polyline"
+            "polyline": "draw_polyline",
         }
-        
+
         func_name = entity_mapping.get(entity, f"draw_{entity}")
-        
+
         if func_name in self.functions:
-            func = self.functions[func_name]
-            
             # Customize the template based on complexity
             if complexity == "basic":
                 code = self._create_basic_drawing_command(entity, parsed)
             else:
                 code = self._create_advanced_drawing_command(entity, parsed)
-            
+
             return {
                 "code": code,
                 "language": "autolisp",
@@ -352,16 +367,18 @@ class AutoLISPGenerator:
                 "usage_example": f"(c:{parsed['command_name']})",
                 "notes": [
                     "Load this code into AutoCAD using APPLOAD command",
-                    f"Type '{parsed['command_name']}' at the command prompt to execute"
-                ]
+                    f"Type '{parsed['command_name']}' at the command prompt to execute",
+                ],
             }
-        
+
         return {"error": f"Unsupported entity type: {entity}"}
-    
-    def _create_basic_drawing_command(self, entity: str, parsed: Dict[str, Any]) -> str:
+
+    def _create_basic_drawing_command(
+        self, entity: str, parsed: dict[str, Any]
+    ) -> str:
         """Create basic drawing command code."""
         command_name = parsed["command_name"]
-        
+
         if entity == "line":
             return f"""(defun c:{command_name} ( / pt1 pt2)
   ;; {parsed['description']}
@@ -370,7 +387,7 @@ class AutoLISPGenerator:
   (command "LINE" pt1 pt2 "")
   (princ)
 )"""
-        
+
         elif entity == "circle":
             return f"""(defun c:{command_name} ( / center radius)
   ;; {parsed['description']}
@@ -379,7 +396,7 @@ class AutoLISPGenerator:
   (command "CIRCLE" center radius)
   (princ)
 )"""
-        
+
         elif entity == "rectangle":
             return f"""(defun c:{command_name} ( / pt1 pt2)
   ;; {parsed['description']}
@@ -388,7 +405,7 @@ class AutoLISPGenerator:
   (command "RECTANGLE" pt1 pt2)
   (princ)
 )"""
-        
+
         else:
             return f"""(defun c:{command_name} ( / )
   ;; {parsed['description']}
@@ -396,17 +413,18 @@ class AutoLISPGenerator:
   (command "{entity.upper()}")
   (princ)
 )"""
-    
-    def _create_advanced_drawing_command(self, entity: str, parsed: Dict[str, Any]) -> str:
+
+    def _create_advanced_drawing_command(
+        self, entity: str, parsed: dict[str, Any]
+    ) -> str:
         """Create advanced drawing command with error handling and validation."""
         command_name = parsed["command_name"]
-        
+
         base_code = self._create_basic_drawing_command(entity, parsed)
-        
+
         # Add error handling wrapper
         return f"""(defun c:{command_name} ( / pt1 pt2 center radius result)
   ;; {parsed['description']} (Advanced version with error handling)
-  
   ;; Check if AutoCAD is in correct state
   (if (not (= (getvar "CMDACTIVE") 0))
     (progn
@@ -414,10 +432,8 @@ class AutoLISPGenerator:
       (exit)
     )
   )
-  
   ;; Set appropriate layer and properties
   (setvar "CLAYER" "0")  ; Set to layer 0 by default
-  
   ;; Execute main operation with error handling
   (if (vl-catch-all-error-p
         (setq result (vl-catch-all-apply
@@ -437,39 +453,38 @@ class AutoLISPGenerator:
   )
   (princ)
 )"""
-    
+
     def _extract_main_operation(self, code: str) -> str:
         """Extract main operation from basic code for error handling."""
         # Extract lines between the function definition and (princ)
-        lines = code.split('\n')
+        lines = code.split("\n")
         main_lines = []
         in_main = False
-        
+
         for line in lines:
-            if line.strip().startswith('(setq') or line.strip().startswith('(command'):
+            if line.strip().startswith("(setq") or line.strip().startswith("(command"):
                 in_main = True
-            if in_main and not line.strip() == '(princ)':
-                main_lines.append('  ' + line.strip())
-            elif line.strip() == '(princ)':
+            if in_main and not line.strip() == "(princ)":
+                main_lines.append("  " + line.strip())
+            elif line.strip() == "(princ)":
                 break
-        
-        return '\n'.join(main_lines)
-    
-    def _generate_selection_code(self, parsed: Dict[str, Any], complexity: str) -> Dict[str, Any]:
+
+        return "\n".join(main_lines)
+
+    def _generate_selection_code(
+        self, parsed: dict[str, Any], complexity: str
+    ) -> dict[str, Any]:
         """Generate code for selection operations."""
         command_name = parsed["command_name"]
-        
+
         code = f"""(defun c:{command_name} ( / ss i ent count)
   ;; {parsed['description']}
-  
   (princ "\\nSelect entities to process: ")
   (setq ss (ssget))
-  
   (if ss
     (progn
       (setq count (sslength ss))
       (princ (strcat "\\nSelected " (itoa count) " entities."))
-      
       ;; Process each entity
       (setq i 0)
       (repeat count
@@ -484,7 +499,7 @@ class AutoLISPGenerator:
   )
   (princ)
 )"""
-        
+
         return {
             "code": code,
             "language": "autolisp",
@@ -494,14 +509,16 @@ class AutoLISPGenerator:
             "notes": [
                 "This command prompts for entity selection",
                 "Modify the processing section for specific operations",
-                "Use (entget ent) to access entity properties"
-            ]
+                "Use (entget ent) to access entity properties",
+            ],
         }
-    
-    def _generate_modification_code(self, parsed: Dict[str, Any], complexity: str) -> Dict[str, Any]:
+
+    def _generate_modification_code(
+        self, parsed: dict[str, Any], complexity: str
+    ) -> dict[str, Any]:
         """Generate code for modification operations."""
         command_name = parsed["command_name"]
-        
+
         # Determine modification type
         desc_lower = parsed["description"].lower()
         if "move" in desc_lower:
@@ -514,75 +531,67 @@ class AutoLISPGenerator:
             operation = "SCALE"
         else:
             operation = "MODIFY"
-        
+
         code = f"""(defun c:{command_name} ( / ss base-pt dest-pt)
   ;; {parsed['description']}
-  
   (princ "\\nSelect entities to {operation.lower()}: ")
   (setq ss (ssget))
-  
   (if ss
     (progn
       (setq base-pt (getpoint "\\nSpecify base point: "))
       (setq dest-pt (getpoint base-pt "\\nSpecify destination point: "))
-      
       (command "{operation}" ss "" base-pt dest-pt)
-      (princ (strcat "\\n{operation.capitalize()} operation completed on " 
+      (princ (strcat "\\n{operation.capitalize()} operation completed on "
                      (itoa (sslength ss)) " entities."))
     )
     (princ "\\nNo entities selected.")
   )
   (princ)
 )"""
-        
+
         return {
             "code": code,
-            "language": "autolisp", 
+            "language": "autolisp",
             "command_name": command_name,
             "description": f"AutoLISP command to {parsed['description']}",
             "usage_example": f"(c:{command_name})",
             "notes": [
                 f"Uses AutoCAD's {operation} command",
                 "Prompts for entity selection and points",
-                "Works with any selectable entities"
-            ]
+                "Works with any selectable entities",
+            ],
         }
-    
-    def _generate_batch_code(self, parsed: Dict[str, Any], complexity: str) -> Dict[str, Any]:
+
+    def _generate_batch_code(
+        self, parsed: dict[str, Any], complexity: str
+    ) -> dict[str, Any]:
         """Generate code for batch operations."""
         command_name = parsed["command_name"]
-        
+
         code = f"""(defun c:{command_name} ( / ss i ent count processed-count)
   ;; {parsed['description']}
-  
   (princ "\\nSelect entities for batch processing: ")
   (setq ss (ssget))
   (setq processed-count 0)
-  
   (if ss
     (progn
       (setq count (sslength ss))
       (princ (strcat "\\nProcessing " (itoa count) " entities..."))
-      
       ;; Process each entity
       (setq i 0)
       (repeat count
         (setq ent (ssname ss i))
-        
         ;; Add your batch processing logic here
         (if (batch-process-entity ent)
           (setq processed-count (1+ processed-count))
         )
-        
         ;; Progress indicator
         (if (= (rem (1+ i) 10) 0)
           (princ (strcat "\\nProcessed " (itoa (1+ i)) " of " (itoa count) " entities..."))
         )
-        
         (setq i (1+ i))
       )
-      
-      (princ (strcat "\\nBatch processing complete. Successfully processed " 
+      (princ (strcat "\\nBatch processing complete. Successfully processed "
                      (itoa processed-count) " of " (itoa count) " entities."))
     )
     (princ "\\nNo entities selected.")
@@ -604,40 +613,39 @@ class AutoLISPGenerator:
     nil  ; Return failure
   )
 )"""
-        
+
         return {
             "code": code,
             "language": "autolisp",
-            "command_name": command_name, 
+            "command_name": command_name,
             "description": f"AutoLISP command to {parsed['description']}",
             "usage_example": f"(c:{command_name})",
             "notes": [
                 "Includes progress indicator for large selections",
                 "Modify batch-process-entity function for specific operations",
                 "Returns count of successfully processed entities",
-                "Handles errors gracefully for individual entities"
-            ]
+                "Handles errors gracefully for individual entities",
+            ],
         }
-    
-    def _generate_generic_code(self, parsed: Dict[str, Any], complexity: str) -> Dict[str, Any]:
+
+    def _generate_generic_code(
+        self, parsed: dict[str, Any], complexity: str
+    ) -> dict[str, Any]:
         """Generate generic AutoLISP command code."""
         command_name = parsed["command_name"]
-        
+
         code = f"""(defun c:{command_name} ( / )
   ;; {parsed['description']}
-  
   (princ "\\nExecuting {command_name} command...")
-  
   ;; Add your AutoLISP code here
   ;; Examples:
   ;; (setq pt (getpoint "Pick a point: "))
   ;; (setq ss (ssget "Select entities: "))
   ;; (command "COMMANDNAME" parameters)
-  
   (princ "\\nCommand completed.")
   (princ)
 )"""
-        
+
         return {
             "code": code,
             "language": "autolisp",
@@ -647,11 +655,11 @@ class AutoLISPGenerator:
             "notes": [
                 "Template provides basic command structure",
                 "Add specific AutoLISP logic in the marked section",
-                "Use (getpoint), (ssget), (command) for user interaction"
-            ]
+                "Use (getpoint), (ssget), (command) for user interaction",
+            ],
         }
-    
-    def get_function_library(self) -> Dict[str, Any]:
+
+    def get_function_library(self) -> dict[str, Any]:
         """Get available AutoLISP function templates."""
         return {
             "functions": {
@@ -659,42 +667,48 @@ class AutoLISPGenerator:
                     "name": func.name,
                     "parameters": func.parameters,
                     "description": func.description,
-                    "examples": func.examples
+                    "examples": func.examples,
                 }
                 for name, func in self.functions.items()
             },
             "templates": list(self.templates.keys()),
-            "patterns": list(self.patterns.keys())
+            "patterns": list(self.patterns.keys()),
         }
-    
-    def validate_syntax(self, code: str) -> Dict[str, Any]:
+
+    def validate_syntax(self, code: str) -> dict[str, Any]:
         """Basic AutoLISP syntax validation."""
         issues = []
-        
+
         # Check parentheses balance
-        open_parens = code.count('(')
-        close_parens = code.count(')')
+        open_parens = code.count("(")
+        close_parens = code.count(")")
         if open_parens != close_parens:
-            issues.append(f"Unbalanced parentheses: {open_parens} open, {close_parens} close")
-        
+            issues.append(
+                f"Unbalanced parentheses: {open_parens} open, {close_parens} close"
+            )
+
         # Check for common issues
-        if 'defun' not in code.lower():
+        if "defun" not in code.lower():
             issues.append("No function definition found (missing defun)")
-        
-        if '(princ)' not in code:
+
+        if "(princ)" not in code:
             issues.append("Missing (princ) at end of command function")
-        
+
         # Check for proper command structure
-        if re.search(r'defun\s+c:', code):
-            if not re.search(r'\(\s*princ\s*\)', code):
+        if re.search(r"defun\s+c:", code):
+            if not re.search(r"\(\s*princ\s*\)", code):
                 issues.append("Command function should end with (princ)")
-        
+
         return {
             "valid": len(issues) == 0,
             "issues": issues,
-            "suggestions": [
-                "Ensure all parentheses are balanced",
-                "Command functions should start with (defun c:commandname",
-                "End command functions with (princ)"
-            ] if issues else ["Code syntax appears valid"]
+            "suggestions": (
+                [
+                    "Ensure all parentheses are balanced",
+                    "Command functions should start with (defun c:commandname",
+                    "End command functions with (princ)",
+                ]
+                if issues
+                else ["Code syntax appears valid"]
+            ),
         }

@@ -8,10 +8,12 @@ and development features. This is a drop-in replacement for pyautocad.Autocad.
 """
 
 import logging
-from typing import Any, Optional, List, Dict, Iterator
+from collections.abc import Iterator
+from typing import Any
+
 from .connection_manager import ConnectionManager
+from .error_handler import ErrorHandler
 from .performance_monitor import PerformanceMonitor
-from .error_handler import ErrorHandler, ErrorCategory
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +145,7 @@ class EnhancedAutoCAD:
         except Exception as e:
             self._error_handler.handle_error(e, "iter_objects")
 
-    def find_one(self, object_name_or_list, container=None, predicate=None) -> Optional[Any]:
+    def find_one(self, object_name_or_list, container=None, predicate=None) -> Any | None:
         """
         Find first object matching criteria (pyautocad compatible).
 
@@ -168,7 +170,7 @@ class EnhancedAutoCAD:
             return None
 
     # Enhanced wrapper methods (additional functionality)
-    def get_connection_status(self) -> Dict[str, Any]:
+    def get_connection_status(self) -> dict[str, Any]:
         """
         Get detailed connection status and diagnostics.
 
@@ -177,7 +179,7 @@ class EnhancedAutoCAD:
         """
         return self._connection_manager.get_connection_status()
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """
         Get performance metrics for AutoCAD operations.
 
@@ -186,7 +188,7 @@ class EnhancedAutoCAD:
         """
         return self._performance_monitor.get_performance_summary()
 
-    def get_error_statistics(self) -> Dict[str, Any]:
+    def get_error_statistics(self) -> dict[str, Any]:
         """
         Get error statistics and recovery information.
 
@@ -212,7 +214,7 @@ class EnhancedAutoCAD:
             logger.error(f"Connection recovery failed: {str(e)}")
             return False
 
-    def create_diagnostic_report(self) -> Dict[str, Any]:
+    def create_diagnostic_report(self) -> dict[str, Any]:
         """
         Create comprehensive diagnostic report.
 
@@ -227,7 +229,7 @@ class EnhancedAutoCAD:
         }
 
     # Manufacturing workflow compatibility methods
-    def draw_line(self, start_point: List[float], end_point: List[float]) -> int:
+    def draw_line(self, start_point: list[float], end_point: list[float]) -> int:
         """
         Draw line in AutoCAD (manufacturing system compatible).
 
@@ -246,7 +248,7 @@ class EnhancedAutoCAD:
         except Exception as e:
             self._error_handler.handle_error(e, "draw_line")
 
-    def draw_circle(self, center: List[float], radius: float) -> int:
+    def draw_circle(self, center: list[float], radius: float) -> int:
         """
         Draw circle in AutoCAD (manufacturing system compatible).
 

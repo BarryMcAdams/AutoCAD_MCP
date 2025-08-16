@@ -8,7 +8,8 @@ in existing manufacturing system.
 """
 
 import logging
-from typing import Any, Optional, List, Iterator
+from typing import Any
+
 from .enhanced_wrapper import EnhancedAutoCAD
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ class Autocad(EnhancedAutoCAD):
             self._error_handler.handle_error(e, "prompt")
             return ""
 
-    def get_entity(self, message: str = "Select entity: ") -> Optional[Any]:
+    def get_entity(self, message: str = "Select entity: ") -> Any | None:
         """
         Get entity through user selection (pyautocad compatible).
 
@@ -75,8 +76,8 @@ class Autocad(EnhancedAutoCAD):
             return None
 
     def get_point(
-        self, message: str = "Pick point: ", base_point: Optional[List[float]] = None
-    ) -> Optional[List[float]]:
+        self, message: str = "Pick point: ", base_point: list[float] | None = None
+    ) -> list[float] | None:
         """
         Get point through user selection (pyautocad compatible).
 
@@ -102,7 +103,7 @@ class Autocad(EnhancedAutoCAD):
             self._error_handler.handle_error(e, "get_point", raise_exception=False)
             return None
 
-    def get_selection(self, message: str = "Select objects: ") -> Optional[Any]:
+    def get_selection(self, message: str = "Select objects: ") -> Any | None:
         """
         Get selection set through user selection (pyautocad compatible).
 
@@ -137,7 +138,7 @@ def Autocad_instance(*args, **kwargs) -> Autocad:
 
 
 # Common utility functions for pyautocad compatibility
-def apoint(x: float, y: float = 0, z: float = 0) -> List[float]:
+def apoint(x: float, y: float = 0, z: float = 0) -> list[float]:
     """
     Create AutoCAD point from coordinates (pyautocad compatible).
 
@@ -152,7 +153,7 @@ def apoint(x: float, y: float = 0, z: float = 0) -> List[float]:
     return [float(x), float(y), float(z)]
 
 
-def aDouble(values: List[float]) -> List[float]:
+def aDouble(values: list[float]) -> list[float]:
     """
     Convert values to AutoCAD double array (pyautocad compatible).
 
@@ -165,7 +166,7 @@ def aDouble(values: List[float]) -> List[float]:
     return [float(v) for v in values]
 
 
-def aInt(values: List[int]) -> List[int]:
+def aInt(values: list[int]) -> list[int]:
     """
     Convert values to AutoCAD integer array (pyautocad compatible).
 
@@ -178,7 +179,7 @@ def aInt(values: List[int]) -> List[int]:
     return [int(v) for v in values]
 
 
-def aShort(values: List[int]) -> List[int]:
+def aShort(values: list[int]) -> list[int]:
     """
     Convert values to AutoCAD short integer array (pyautocad compatible).
 

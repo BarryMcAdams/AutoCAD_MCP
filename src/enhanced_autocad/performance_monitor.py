@@ -8,12 +8,12 @@ manufacturing workflows and interactive development sessions.
 """
 
 import logging
-import time
 import threading
+import time
 from collections import defaultdict, deque
-from typing import Dict, Any, List, Optional, Callable
-from dataclasses import dataclass, asdict
 from contextlib import contextmanager
+from dataclasses import asdict, dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,8 @@ class OperationMetrics:
     end_time: float
     duration: float
     success: bool
-    error_message: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    error_message: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class PerformanceMonitor:
@@ -65,7 +65,7 @@ class PerformanceMonitor:
         self._start_time = time.time()
 
     @contextmanager
-    def measure_operation(self, operation_name: str, metadata: Optional[Dict[str, Any]] = None):
+    def measure_operation(self, operation_name: str, metadata: dict[str, Any] | None = None):
         """
         Context manager to measure operation performance.
 
@@ -152,7 +152,7 @@ class PerformanceMonitor:
                     {"timestamp": metrics.end_time, "error": metrics.error_message}
                 )
 
-    def get_operation_statistics(self, operation_name: Optional[str] = None) -> Dict[str, Any]:
+    def get_operation_statistics(self, operation_name: str | None = None) -> dict[str, Any]:
         """
         Get performance statistics for operations.
 
@@ -203,8 +203,8 @@ class PerformanceMonitor:
                 return all_stats
 
     def get_recent_operations(
-        self, count: int = 10, operation_name: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, count: int = 10, operation_name: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Get recent operation metrics.
 
@@ -226,7 +226,7 @@ class PerformanceMonitor:
             recent_ops = operations[-count:] if count > 0 else operations
             return [asdict(op) for op in reversed(recent_ops)]
 
-    def get_performance_summary(self) -> Dict[str, Any]:
+    def get_performance_summary(self) -> dict[str, Any]:
         """
         Get comprehensive performance summary.
 
@@ -287,7 +287,7 @@ class PerformanceMonitor:
 
             return summary
 
-    def get_current_operations(self) -> List[Dict[str, Any]]:
+    def get_current_operations(self) -> list[dict[str, Any]]:
         """
         Get currently running operations.
 
@@ -320,7 +320,7 @@ class PerformanceMonitor:
             self._start_time = time.time()
             logger.info("Performance metrics cleared")
 
-    def export_metrics(self, include_history: bool = True) -> Dict[str, Any]:
+    def export_metrics(self, include_history: bool = True) -> dict[str, Any]:
         """
         Export all performance metrics for analysis.
 

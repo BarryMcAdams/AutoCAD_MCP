@@ -7,11 +7,11 @@ and intelligent error categorization for both manufacturing workflows and develo
 """
 
 import logging
-import traceback
 import time
-from typing import Dict, Any, Optional, List, Callable, Type
+import traceback
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,8 @@ class ErrorContext:
     original_exception: Exception
     operation_name: str
     timestamp: float
-    recovery_suggestion: Optional[str] = None
-    diagnostic_info: Optional[Dict[str, Any]] = None
+    recovery_suggestion: str | None = None
+    diagnostic_info: dict[str, Any] | None = None
     is_recoverable: bool = False
 
 
@@ -51,7 +51,7 @@ class ErrorHandler:
         self._error_patterns = self._initialize_error_patterns()
         self._recovery_strategies = self._initialize_recovery_strategies()
 
-    def _initialize_error_patterns(self) -> Dict[str, ErrorCategory]:
+    def _initialize_error_patterns(self) -> dict[str, ErrorCategory]:
         """
         Initialize error pattern recognition.
 
@@ -88,7 +88,7 @@ class ErrorHandler:
             "operation too slow": ErrorCategory.PERFORMANCE_ERROR,
         }
 
-    def _initialize_recovery_strategies(self) -> Dict[ErrorCategory, List[str]]:
+    def _initialize_recovery_strategies(self) -> dict[ErrorCategory, list[str]]:
         """
         Initialize recovery strategies for different error categories.
 
@@ -187,7 +187,7 @@ class ErrorHandler:
 
         return error_context
 
-    def _gather_diagnostic_info(self, exception: Exception, operation_name: str) -> Dict[str, Any]:
+    def _gather_diagnostic_info(self, exception: Exception, operation_name: str) -> dict[str, Any]:
         """
         Gather diagnostic information for error context.
 
@@ -254,7 +254,7 @@ class ErrorHandler:
 
         return error_context
 
-    def get_error_statistics(self) -> Dict[str, Any]:
+    def get_error_statistics(self) -> dict[str, Any]:
         """
         Get comprehensive error statistics.
 
@@ -315,7 +315,7 @@ class ErrorHandler:
             ),
         }
 
-    def get_recovery_suggestions(self, error_category: ErrorCategory) -> List[str]:
+    def get_recovery_suggestions(self, error_category: ErrorCategory) -> list[str]:
         """
         Get recovery suggestions for specific error category.
 
@@ -332,7 +332,7 @@ class ErrorHandler:
         self._error_history.clear()
         logger.info("Error history cleared")
 
-    def create_error_report(self) -> Dict[str, Any]:
+    def create_error_report(self) -> dict[str, Any]:
         """
         Create comprehensive error report for troubleshooting.
 
@@ -355,7 +355,7 @@ class ErrorHandler:
 
         return report
 
-    def _generate_recommendations(self, statistics: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, statistics: dict[str, Any]) -> list[str]:
         """
         Generate recommendations based on error patterns.
 

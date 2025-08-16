@@ -7,18 +7,18 @@ hierarchical navigation, and detailed property/method analysis. Supports
 real-time object inspection and code generation assistance.
 """
 
+import inspect
 import logging
 import time
-from typing import Dict, Any, List, Optional, Union, Set
 from dataclasses import dataclass
 from enum import Enum
-import inspect
-import sys
+from typing import Any
 
 # Optional Windows COM imports - graceful degradation if not available
 try:
     import pythoncom
     import win32com.client
+
     COM_AVAILABLE = True
 except ImportError:
     COM_AVAILABLE = False
@@ -28,46 +28,50 @@ logger = logging.getLogger(__name__)
 
 class InspectionDepth(Enum):
     """Inspection depth levels."""
-    BASIC = "basic"           # Basic properties and methods
-    DETAILED = "detailed"     # Full properties, methods, and documentation
+
+    BASIC = "basic"  # Basic properties and methods
+    DETAILED = "detailed"  # Full properties, methods, and documentation
     COMPREHENSIVE = "comprehensive"  # Everything including internal attributes
-    HIERARCHICAL = "hierarchical"   # Include parent/child relationships
+    HIERARCHICAL = "hierarchical"  # Include parent/child relationships
 
 
 @dataclass
 class PropertyInfo:
     """Information about an object property."""
+
     name: str
     value: Any
     type_name: str
     is_readable: bool
     is_writable: bool
-    description: Optional[str] = None
-    constraints: Optional[Dict[str, Any]] = None
+    description: str | None = None
+    constraints: dict[str, Any] | None = None
 
 
 @dataclass
 class MethodInfo:
     """Information about an object method."""
+
     name: str
     signature: str
-    description: Optional[str] = None
-    parameters: List[Dict[str, Any]] = None
-    return_type: Optional[str] = None
+    description: str | None = None
+    parameters: list[dict[str, Any]] = None
+    return_type: str | None = None
     is_static: bool = False
 
 
 @dataclass
 class InspectionResult:
     """Result of object inspection."""
-    object_id: Union[int, str]
+
+    object_id: int | str
     object_type: str
-    object_name: Optional[str]
+    object_name: str | None
     depth: InspectionDepth
-    properties: List[PropertyInfo]
-    methods: List[MethodInfo]
-    hierarchy: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    properties: list[PropertyInfo]
+    methods: list[MethodInfo]
+    hierarchy: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
     inspection_time: float = 0.0
 
 
@@ -86,21 +90,35 @@ class ObjectInspector:
         self.autocad_wrapper = autocad_wrapper
         self.inspection_cache = {}
         self.cache_timeout = 300  # 5 minutes
-        
+
         # AutoCAD object type mappings
         self.autocad_types = self._initialize_autocad_types()
-        
+
         # Property/method filters
         self.system_properties = {
-            '__class__', '__doc__', '__dict__', '__module__', '__weakref__',
-            '__getattribute__', '__setattr__', '__delattr__', '__hash__',
-            '__repr__', '__str__', '__sizeof__', '__format__'
+            "__class__",
+            "__doc__",
+            "__dict__",
+            "__module__",
+            "__weakref__",
+            "__getattribute__",
+            "__setattr__",
+            "__delattr__",
+            "__hash__",
+            "__repr__",
+            "__str__",
+            "__sizeof__",
+            "__format__",
         }
-        
+
         logger.info("ObjectInspector initialized")
 
-    def inspect_object(self, obj: Any, depth: InspectionDepth = InspectionDepth.BASIC,
-                      object_id: Optional[Union[int, str]] = None) -> InspectionResult:
+    def inspect_object(
+        self,
+        obj: Any,
+        depth: InspectionDepth = InspectionDepth.BASIC,
+        object_id: int | str | None = None,
+    ) -> InspectionResult:
         """
         Inspect an AutoCAD object with specified depth.
 
@@ -113,7 +131,7 @@ class ObjectInspector:
             Comprehensive inspection result
         """
         start_time = time.time()
-        
+
         if object_id is None:
             object_id = id(obj)
 
@@ -133,7 +151,9 @@ class ObjectInspector:
             # Cache result
             self.inspection_cache[cache_key] = (result, time.time())
 
-            logger.info(f"Inspected object {object_id} with depth {depth.value} in {result.inspection_time:.3f}s")
+            logger.info(
+                f"Inspected object {object_id} with depth {depth.value} in {result.inspection_time:.3f}s"
+            )
             return result
 
         except Exception as e:
@@ -147,10 +167,12 @@ class ObjectInspector:
                 properties=[],
                 methods=[],
                 metadata={"error": str(e)},
-                inspection_time=time.time() - start_time
+                inspection_time=time.time() - start_time,
             )
 
-    def inspect_by_name(self, object_name: str, depth: InspectionDepth = InspectionDepth.BASIC) -> InspectionResult:
+    def inspect_by_name(
+        self, object_name: str, depth: InspectionDepth = InspectionDepth.BASIC
+    ) -> InspectionResult:
         """
         Inspect object by name from AutoCAD context.
 
@@ -166,13 +188,13 @@ class ObjectInspector:
 
         # Get object from AutoCAD wrapper
         obj = None
-        if object_name == 'app':
-            obj = getattr(self.autocad_wrapper, 'app', None)
-        elif object_name == 'doc':
-            obj = getattr(self.autocad_wrapper, 'doc', None)
-        elif object_name == 'model':
-            obj = getattr(self.autocad_wrapper, 'model', None)
-        elif object_name == 'acad':
+        if object_name == "app":
+            obj = getattr(self.autocad_wrapper, "app", None)
+        elif object_name == "doc":
+            obj = getattr(self.autocad_wrapper, "doc", None)
+        elif object_name == "model":
+            obj = getattr(self.autocad_wrapper, "model", None)
+        elif object_name == "acad":
             obj = self.autocad_wrapper
         else:
             # Try to get from wrapper attributes
@@ -183,7 +205,7 @@ class ObjectInspector:
 
         return self.inspect_object(obj, depth, object_name)
 
-    def get_object_hierarchy(self, obj: Any) -> Dict[str, Any]:
+    def get_object_hierarchy(self, obj: Any) -> dict[str, Any]:
         """
         Get object hierarchy information.
 
@@ -196,19 +218,19 @@ class ObjectInspector:
         try:
             hierarchy = {
                 "type": type(obj).__name__,
-                "module": getattr(type(obj), '__module__', 'unknown'),
+                "module": getattr(type(obj), "__module__", "unknown"),
                 "mro": [cls.__name__ for cls in type(obj).mro()],
                 "bases": [cls.__name__ for cls in type(obj).__bases__],
             }
 
             # Add COM-specific hierarchy if available
-            if COM_AVAILABLE and hasattr(obj, '_oleobj_'):
+            if COM_AVAILABLE and hasattr(obj, "_oleobj_"):
                 try:
                     # Get COM type info
                     typeinfo = obj._oleobj_.GetTypeInfo()
                     if typeinfo:
                         hierarchy["com_type"] = "COM Object"
-                        hierarchy["com_class"] = getattr(obj, '_oleobj_class_', 'Unknown')
+                        hierarchy["com_class"] = getattr(obj, "_oleobj_class_", "Unknown")
                 except:
                     pass
 
@@ -218,7 +240,7 @@ class ObjectInspector:
             logger.warning(f"Error getting object hierarchy: {str(e)}")
             return {"error": str(e)}
 
-    def search_objects(self, search_term: str, search_type: str = "all") -> List[Dict[str, Any]]:
+    def search_objects(self, search_term: str, search_type: str = "all") -> list[dict[str, Any]]:
         """
         Search for objects matching criteria.
 
@@ -237,10 +259,10 @@ class ObjectInspector:
 
         # Search in main AutoCAD objects
         objects_to_search = {
-            'app': getattr(self.autocad_wrapper, 'app', None),
-            'doc': getattr(self.autocad_wrapper, 'doc', None),
-            'model': getattr(self.autocad_wrapper, 'model', None),
-            'acad': self.autocad_wrapper
+            "app": getattr(self.autocad_wrapper, "app", None),
+            "doc": getattr(self.autocad_wrapper, "doc", None),
+            "model": getattr(self.autocad_wrapper, "model", None),
+            "acad": self.autocad_wrapper,
         }
 
         for obj_name, obj in objects_to_search.items():
@@ -249,35 +271,43 @@ class ObjectInspector:
 
             try:
                 # Search properties
-                if search_type in ['properties', 'all']:
+                if search_type in ["properties", "all"]:
                     for prop_name in dir(obj):
                         if search_lower in prop_name.lower():
                             try:
                                 value = getattr(obj, prop_name)
-                                results.append({
-                                    "object": obj_name,
-                                    "type": "property",
-                                    "name": prop_name,
-                                    "value_type": type(value).__name__,
-                                    "match_score": self._calculate_match_score(search_term, prop_name)
-                                })
+                                results.append(
+                                    {
+                                        "object": obj_name,
+                                        "type": "property",
+                                        "name": prop_name,
+                                        "value_type": type(value).__name__,
+                                        "match_score": self._calculate_match_score(
+                                            search_term, prop_name
+                                        ),
+                                    }
+                                )
                             except:
                                 pass
 
                 # Search methods
-                if search_type in ['methods', 'all']:
+                if search_type in ["methods", "all"]:
                     for method_name in dir(obj):
                         if search_lower in method_name.lower():
                             try:
                                 method = getattr(obj, method_name)
                                 if callable(method):
-                                    results.append({
-                                        "object": obj_name,
-                                        "type": "method",
-                                        "name": method_name,
-                                        "signature": self._get_method_signature(method),
-                                        "match_score": self._calculate_match_score(search_term, method_name)
-                                    })
+                                    results.append(
+                                        {
+                                            "object": obj_name,
+                                            "type": "method",
+                                            "name": method_name,
+                                            "signature": self._get_method_signature(method),
+                                            "match_score": self._calculate_match_score(
+                                                search_term, method_name
+                                            ),
+                                        }
+                                    )
                             except:
                                 pass
 
@@ -288,7 +318,7 @@ class ObjectInspector:
         results.sort(key=lambda x: x.get("match_score", 0), reverse=True)
         return results[:50]  # Limit results
 
-    def get_code_completion_data(self, context: str) -> Dict[str, Any]:
+    def get_code_completion_data(self, context: str) -> dict[str, Any]:
         """
         Get code completion data for context.
 
@@ -298,23 +328,19 @@ class ObjectInspector:
         Returns:
             Completion data for IntelliSense
         """
-        completions = {
-            "properties": [],
-            "methods": [],
-            "objects": []
-        }
+        completions = {"properties": [], "methods": [], "objects": []}
 
         if not self.autocad_wrapper:
             return completions
 
         # Parse context to determine what to complete
-        if '.' in context:
+        if "." in context:
             # Object member completion
-            parts = context.split('.')
+            parts = context.split(".")
             if len(parts) >= 2:
                 obj_name = parts[0]
                 partial_member = parts[-1] if len(parts) > 1 else ""
-                
+
                 obj = self._get_object_by_name(obj_name)
                 if obj:
                     completions = self._get_member_completions(obj, partial_member)
@@ -324,7 +350,7 @@ class ObjectInspector:
                 {"name": "acad", "type": "object", "description": "AutoCAD wrapper instance"},
                 {"name": "app", "type": "object", "description": "AutoCAD Application object"},
                 {"name": "doc", "type": "object", "description": "Active AutoCAD document"},
-                {"name": "model", "type": "object", "description": "Model space object"}
+                {"name": "model", "type": "object", "description": "Model space object"},
             ]
 
         return completions
@@ -334,15 +360,17 @@ class ObjectInspector:
         self.inspection_cache.clear()
         logger.info("Inspection cache cleared")
 
-    def _perform_inspection(self, obj: Any, depth: InspectionDepth, object_id: Union[int, str]) -> InspectionResult:
+    def _perform_inspection(
+        self, obj: Any, depth: InspectionDepth, object_id: int | str
+    ) -> InspectionResult:
         """Perform the actual object inspection."""
         # Get basic object information
         object_type = type(obj).__name__
-        object_name = getattr(obj, '__name__', None) or str(object_id)
+        object_name = getattr(obj, "__name__", None) or str(object_id)
 
         # Analyze properties
         properties = self._analyze_properties(obj, depth)
-        
+
         # Analyze methods
         methods = self._analyze_methods(obj, depth)
 
@@ -353,17 +381,17 @@ class ObjectInspector:
 
         # Collect metadata
         metadata = {
-            "module": getattr(type(obj), '__module__', 'unknown'),
+            "module": getattr(type(obj), "__module__", "unknown"),
             "class_name": type(obj).__name__,
             "memory_address": hex(id(obj)),
             "property_count": len(properties),
-            "method_count": len(methods)
+            "method_count": len(methods),
         }
 
         # Add COM-specific metadata
-        if COM_AVAILABLE and hasattr(obj, '_oleobj_'):
+        if COM_AVAILABLE and hasattr(obj, "_oleobj_"):
             metadata["com_object"] = True
-            metadata["com_class"] = getattr(obj, '_oleobj_class_', 'Unknown')
+            metadata["com_class"] = getattr(obj, "_oleobj_class_", "Unknown")
 
         return InspectionResult(
             object_id=object_id,
@@ -373,13 +401,13 @@ class ObjectInspector:
             properties=properties,
             methods=methods,
             hierarchy=hierarchy,
-            metadata=metadata
+            metadata=metadata,
         )
 
-    def _analyze_properties(self, obj: Any, depth: InspectionDepth) -> List[PropertyInfo]:
+    def _analyze_properties(self, obj: Any, depth: InspectionDepth) -> list[PropertyInfo]:
         """Analyze object properties."""
         properties = []
-        
+
         for name in dir(obj):
             if name in self.system_properties and depth == InspectionDepth.BASIC:
                 continue
@@ -404,7 +432,7 @@ class ObjectInspector:
                 try:
                     # This is a heuristic - not always accurate
                     descriptor = getattr(type(obj), name, None)
-                    if descriptor and hasattr(descriptor, 'fset'):
+                    if descriptor and hasattr(descriptor, "fset"):
                         is_writable = descriptor.fset is not None
                 except:
                     pass
@@ -413,27 +441,29 @@ class ObjectInspector:
                 description = None
                 if depth in [InspectionDepth.DETAILED, InspectionDepth.COMPREHENSIVE]:
                     try:
-                        doc = getattr(getattr(type(obj), name, None), '__doc__', None)
+                        doc = getattr(getattr(type(obj), name, None), "__doc__", None)
                         if doc:
                             description = doc.strip()
                     except:
                         pass
 
-                properties.append(PropertyInfo(
-                    name=name,
-                    value=value,
-                    type_name=type_name,
-                    is_readable=is_readable,
-                    is_writable=is_writable,
-                    description=description
-                ))
+                properties.append(
+                    PropertyInfo(
+                        name=name,
+                        value=value,
+                        type_name=type_name,
+                        is_readable=is_readable,
+                        is_writable=is_writable,
+                        description=description,
+                    )
+                )
 
             except Exception as e:
                 logger.debug(f"Error analyzing property {name}: {str(e)}")
 
         return sorted(properties, key=lambda p: p.name)
 
-    def _analyze_methods(self, obj: Any, depth: InspectionDepth) -> List[MethodInfo]:
+    def _analyze_methods(self, obj: Any, depth: InspectionDepth) -> list[MethodInfo]:
         """Analyze object methods."""
         methods = []
 
@@ -448,11 +478,11 @@ class ObjectInspector:
 
                 # Get method signature
                 signature = self._get_method_signature(method)
-                
+
                 # Get description if available
                 description = None
                 if depth in [InspectionDepth.DETAILED, InspectionDepth.COMPREHENSIVE]:
-                    description = getattr(method, '__doc__', None)
+                    description = getattr(method, "__doc__", None)
                     if description:
                         description = description.strip()
 
@@ -461,13 +491,17 @@ class ObjectInspector:
                 if depth == InspectionDepth.COMPREHENSIVE:
                     parameters = self._get_method_parameters(method)
 
-                methods.append(MethodInfo(
-                    name=name,
-                    signature=signature,
-                    description=description,
-                    parameters=parameters,
-                    is_static=isinstance(inspect.getattr_static(type(obj), name, None), staticmethod)
-                ))
+                methods.append(
+                    MethodInfo(
+                        name=name,
+                        signature=signature,
+                        description=description,
+                        parameters=parameters,
+                        is_static=isinstance(
+                            inspect.getattr_static(type(obj), name, None), staticmethod
+                        ),
+                    )
+                )
 
             except Exception as e:
                 logger.debug(f"Error analyzing method {name}: {str(e)}")
@@ -483,60 +517,64 @@ class ObjectInspector:
             # Fallback for built-in methods or COM objects
             return f"{method.__name__}(...)"
 
-    def _get_method_parameters(self, method) -> List[Dict[str, Any]]:
+    def _get_method_parameters(self, method) -> list[dict[str, Any]]:
         """Get detailed method parameter information."""
         try:
             sig = inspect.signature(method)
             parameters = []
-            
+
             for param_name, param in sig.parameters.items():
                 param_info = {
                     "name": param_name,
                     "kind": param.kind.name,
                     "default": param.default if param.default != inspect.Parameter.empty else None,
-                    "annotation": str(param.annotation) if param.annotation != inspect.Parameter.empty else None
+                    "annotation": (
+                        str(param.annotation)
+                        if param.annotation != inspect.Parameter.empty
+                        else None
+                    ),
                 }
                 parameters.append(param_info)
-            
+
             return parameters
         except (ValueError, TypeError):
             return []
 
-    def _initialize_autocad_types(self) -> Dict[str, Dict[str, Any]]:
+    def _initialize_autocad_types(self) -> dict[str, dict[str, Any]]:
         """Initialize AutoCAD object type information."""
         return {
             "Application": {
                 "description": "AutoCAD Application object",
                 "common_properties": ["Documents", "Version", "Visible"],
-                "common_methods": ["Quit", "Update", "GetAcadState"]
+                "common_methods": ["Quit", "Update", "GetAcadState"],
             },
             "Document": {
                 "description": "AutoCAD Document object",
                 "common_properties": ["ModelSpace", "PaperSpace", "Name"],
-                "common_methods": ["Save", "Close", "SendCommand"]
+                "common_methods": ["Save", "Close", "SendCommand"],
             },
             "ModelSpace": {
                 "description": "AutoCAD Model Space collection",
                 "common_properties": ["Count"],
-                "common_methods": ["AddLine", "AddCircle", "AddText", "Item"]
-            }
+                "common_methods": ["AddLine", "AddCircle", "AddText", "Item"],
+            },
         }
 
-    def _get_object_by_name(self, obj_name: str) -> Optional[Any]:
+    def _get_object_by_name(self, obj_name: str) -> Any | None:
         """Get object by name from AutoCAD context."""
         if not self.autocad_wrapper:
             return None
 
         obj_map = {
-            'acad': self.autocad_wrapper,
-            'app': getattr(self.autocad_wrapper, 'app', None),
-            'doc': getattr(self.autocad_wrapper, 'doc', None),
-            'model': getattr(self.autocad_wrapper, 'model', None)
+            "acad": self.autocad_wrapper,
+            "app": getattr(self.autocad_wrapper, "app", None),
+            "doc": getattr(self.autocad_wrapper, "doc", None),
+            "model": getattr(self.autocad_wrapper, "model", None),
         }
 
         return obj_map.get(obj_name)
 
-    def _get_member_completions(self, obj: Any, partial: str) -> Dict[str, Any]:
+    def _get_member_completions(self, obj: Any, partial: str) -> dict[str, Any]:
         """Get member completions for an object."""
         completions = {"properties": [], "methods": []}
         partial_lower = partial.lower()
@@ -547,17 +585,21 @@ class ObjectInspector:
                     try:
                         member = getattr(obj, name)
                         if callable(member):
-                            completions["methods"].append({
-                                "name": name,
-                                "signature": self._get_method_signature(member),
-                                "description": getattr(member, '__doc__', '')
-                            })
+                            completions["methods"].append(
+                                {
+                                    "name": name,
+                                    "signature": self._get_method_signature(member),
+                                    "description": getattr(member, "__doc__", ""),
+                                }
+                            )
                         else:
-                            completions["properties"].append({
-                                "name": name,
-                                "type": type(member).__name__,
-                                "value": str(member)[:100] if str(member) else ""
-                            })
+                            completions["properties"].append(
+                                {
+                                    "name": name,
+                                    "type": type(member).__name__,
+                                    "value": str(member)[:100] if str(member) else "",
+                                }
+                            )
                     except:
                         pass
         except Exception as e:
@@ -569,7 +611,7 @@ class ObjectInspector:
         """Calculate match score for search results."""
         search_lower = search_term.lower()
         name_lower = name.lower()
-        
+
         if name_lower == search_lower:
             return 1.0
         elif name_lower.startswith(search_lower):
@@ -578,4 +620,6 @@ class ObjectInspector:
             return 0.6
         else:
             # Use basic string similarity
-            return len(set(search_lower) & set(name_lower)) / len(set(search_lower) | set(name_lower))
+            return len(set(search_lower) & set(name_lower)) / len(
+                set(search_lower) | set(name_lower)
+            )

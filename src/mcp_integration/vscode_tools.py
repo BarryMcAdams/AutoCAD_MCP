@@ -8,10 +8,7 @@ command palette functionality, and interactive development features.
 
 import logging
 import time
-import json
-import re
-from typing import Dict, Any, List, Optional, Tuple
-from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +35,7 @@ class VSCodeTools:
 
         logger.info("Enhanced VS Code Tools initialized")
 
-    def get_autocad_connection_indicator(self) -> Dict[str, Any]:
+    def get_autocad_connection_indicator(self) -> dict[str, Any]:
         """
         Get AutoCAD connection status for VS Code status bar.
 
@@ -80,7 +77,7 @@ class VSCodeTools:
                 "color": "red",
             }
 
-    def get_command_palette_items(self) -> List[Dict[str, Any]]:
+    def get_command_palette_items(self) -> list[dict[str, Any]]:
         """
         Get items for VS Code command palette.
 
@@ -169,8 +166,8 @@ class VSCodeTools:
         return commands
 
     def execute_vscode_command(
-        self, command_id: str, args: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, command_id: str, args: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Execute VS Code command.
 
@@ -218,7 +215,7 @@ class VSCodeTools:
             logger.error(f"VS Code command failed: {command_id} - {str(e)}")
             return error_result
 
-    def _handle_command(self, command_id: str, args: Dict[str, Any]) -> Any:
+    def _handle_command(self, command_id: str, args: dict[str, Any]) -> Any:
         """
         Handle specific VS Code command.
 
@@ -249,23 +246,23 @@ class VSCodeTools:
 
         elif command_id == "autocad.performanceMetrics":
             return self._handle_performance_metrics()
-        
+
         elif command_id == "autocad.debugCode":
             return self._handle_debug_code(args)
-        
+
         elif command_id == "autocad.inspectObject":
             return self._handle_inspect_object(args)
-        
+
         elif command_id == "autocad.createProject":
             return self._handle_create_project(args)
-        
+
         elif command_id == "autocad.generateCode":
             return self._handle_generate_code(args)
 
         else:
             raise ValueError(f"Unknown command: {command_id}")
 
-    def _handle_check_connection(self) -> Dict[str, Any]:
+    def _handle_check_connection(self) -> dict[str, Any]:
         """Handle check connection command."""
         if not self.autocad_wrapper:
             return {"status": "No AutoCAD wrapper available"}
@@ -282,7 +279,7 @@ class VSCodeTools:
             },
         }
 
-    def _handle_recover_connection(self) -> Dict[str, Any]:
+    def _handle_recover_connection(self) -> dict[str, Any]:
         """Handle recover connection command."""
         if not self.autocad_wrapper:
             return {"success": False, "message": "No AutoCAD wrapper available"}
@@ -295,7 +292,7 @@ class VSCodeTools:
             ),
         }
 
-    def _handle_draw_line(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_draw_line(self, args: dict[str, Any]) -> dict[str, Any]:
         """Handle draw line command."""
         start_point = args.get("start_point", [0, 0, 0])
         end_point = args.get("end_point", [100, 100, 0])
@@ -306,7 +303,7 @@ class VSCodeTools:
         entity_id = self.autocad_wrapper.draw_line(start_point, end_point)
         return {"entity_id": entity_id, "start_point": start_point, "end_point": end_point}
 
-    def _handle_draw_circle(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_draw_circle(self, args: dict[str, Any]) -> dict[str, Any]:
         """Handle draw circle command."""
         center = args.get("center", [0, 0, 0])
         radius = args.get("radius", 50.0)
@@ -317,7 +314,7 @@ class VSCodeTools:
         entity_id = self.autocad_wrapper.draw_circle(center, radius)
         return {"entity_id": entity_id, "center": center, "radius": radius}
 
-    def _handle_execute_code(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_execute_code(self, args: dict[str, Any]) -> dict[str, Any]:
         """Handle execute code command."""
         code = args.get("code", "")
         session_id = args.get("session_id")
@@ -333,7 +330,7 @@ class VSCodeTools:
             "result": "Code execution would be handled by MCP server",
         }
 
-    def _handle_generate_report(self) -> Dict[str, Any]:
+    def _handle_generate_report(self) -> dict[str, Any]:
         """Handle generate report command."""
         if not self.autocad_wrapper:
             return {"report": "No AutoCAD wrapper available for diagnostics"}
@@ -341,7 +338,7 @@ class VSCodeTools:
         report = self.autocad_wrapper.create_diagnostic_report()
         return {"diagnostic_report": report}
 
-    def _handle_performance_metrics(self) -> Dict[str, Any]:
+    def _handle_performance_metrics(self) -> dict[str, Any]:
         """Handle performance metrics command."""
         if not self.autocad_wrapper:
             return {"metrics": "No AutoCAD wrapper available for metrics"}
@@ -349,7 +346,7 @@ class VSCodeTools:
         metrics = self.autocad_wrapper.get_performance_metrics()
         return {"performance_metrics": metrics}
 
-    def get_intellisense_completions(self, context: str, position: int) -> List[Dict[str, Any]]:
+    def get_intellisense_completions(self, context: str, position: int) -> list[dict[str, Any]]:
         """
         Get IntelliSense completions for AutoCAD context.
 
@@ -402,7 +399,7 @@ class VSCodeTools:
 
         return completions
 
-    def get_command_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_command_history(self, limit: int = 10) -> list[dict[str, Any]]:
         """
         Get recent command history.
 
@@ -419,7 +416,7 @@ class VSCodeTools:
         self.command_history.clear()
         logger.info("VS Code command history cleared")
 
-    def get_vscode_integration_status(self) -> Dict[str, Any]:
+    def get_vscode_integration_status(self) -> dict[str, Any]:
         """
         Get VS Code integration status.
 
@@ -435,8 +432,8 @@ class VSCodeTools:
             "debug_sessions_active": len(self.debug_sessions),
             "integration_active": True,
         }
-    
-    def _initialize_project_templates(self) -> Dict[str, Dict[str, Any]]:
+
+    def _initialize_project_templates(self) -> dict[str, dict[str, Any]]:
         """Initialize project templates for VS Code integration."""
         return {
             "basic_automation": {
@@ -454,12 +451,12 @@ def main():
 if __name__ == "__main__":
     main()""",
                     "requirements.txt": "enhanced-autocad>=1.0.0\\npywin32>=311",
-                    "README.md": "# AutoCAD Automation Project\\n\\nBasic AutoCAD automation project."
-                }
+                    "README.md": "# AutoCAD Automation Project\\n\\nBasic AutoCAD automation project.",
+                },
             },
             "interactive_development": {
                 "name": "Interactive Development",
-                "description": "Template for interactive AutoCAD development", 
+                "description": "Template for interactive AutoCAD development",
                 "files": {
                     "interactive.py": """# Interactive AutoCAD Development Template
 from enhanced_autocad import EnhancedAutoCAD
@@ -481,12 +478,12 @@ def draw_rectangle(width=100, height=50):
 
 # Call the function
 # draw_rectangle()""",
-                    "config.json": '{\n  "autocad_version": "2025",\n  "default_layer": "0",\n  "units": "millimeters"\n}'
-                }
-            }
+                    "config.json": '{\n  "autocad_version": "2025",\n  "default_layer": "0",\n  "units": "millimeters"\n}',
+                },
+            },
         }
-    
-    def _initialize_enhanced_completions(self) -> Dict[str, List[Dict[str, Any]]]:
+
+    def _initialize_enhanced_completions(self) -> dict[str, list[dict[str, Any]]]:
         """Initialize enhanced IntelliSense completions."""
         return {
             "autocad_objects": [
@@ -495,22 +492,22 @@ def draw_rectangle(width=100, height=50):
                     "kind": "property",
                     "detail": "Application",
                     "documentation": "AutoCAD Application object - provides access to application-level functionality",
-                    "insertText": "app"
+                    "insertText": "app",
                 },
                 {
                     "label": "doc",
-                    "kind": "property", 
+                    "kind": "property",
                     "detail": "Document",
                     "documentation": "Active AutoCAD document - provides access to drawing content",
-                    "insertText": "doc"
+                    "insertText": "doc",
                 },
                 {
                     "label": "model",
                     "kind": "property",
                     "detail": "ModelSpace",
                     "documentation": "Model space collection - container for drawing entities",
-                    "insertText": "model"
-                }
+                    "insertText": "model",
+                },
             ],
             "drawing_methods": [
                 {
@@ -518,58 +515,58 @@ def draw_rectangle(width=100, height=50):
                     "kind": "method",
                     "detail": "draw_line(start_point: List[float], end_point: List[float]) -> int",
                     "documentation": "Draw a line from start_point to end_point. Returns entity ID.",
-                    "insertText": "draw_line([${1:0}, ${2:0}, ${3:0}], [${4:100}, ${5:100}, ${6:0}])"
+                    "insertText": "draw_line([${1:0}, ${2:0}, ${3:0}], [${4:100}, ${5:100}, ${6:0}])",
                 },
                 {
                     "label": "draw_circle",
                     "kind": "method",
                     "detail": "draw_circle(center: List[float], radius: float) -> int",
                     "documentation": "Draw a circle with specified center and radius. Returns entity ID.",
-                    "insertText": "draw_circle([${1:0}, ${2:0}, ${3:0}], ${4:50.0})"
+                    "insertText": "draw_circle([${1:0}, ${2:0}, ${3:0}], ${4:50.0})",
                 },
                 {
                     "label": "draw_arc",
                     "kind": "method",
                     "detail": "draw_arc(center: List[float], radius: float, start_angle: float, end_angle: float) -> int",
                     "documentation": "Draw an arc with specified parameters. Angles in radians.",
-                    "insertText": "draw_arc([${1:0}, ${2:0}, ${3:0}], ${4:50.0}, ${5:0}, ${6:3.14159})"
-                }
-            ]
+                    "insertText": "draw_arc([${1:0}, ${2:0}, ${3:0}], ${4:50.0}, ${5:0}, ${6:3.14159})",
+                },
+            ],
         }
-    
-    def _handle_debug_code(self, args: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_debug_code(self, args: dict[str, Any]) -> dict[str, Any]:
         """Handle debug code command with breakpoint support."""
         code = args.get("code", "")
         breakpoints = args.get("breakpoints", [])
         session_id = args.get("session_id", f"debug_{int(time.time())}")
-        
+
         if not code.strip():
             raise ValueError("No code provided for debugging")
-        
+
         # Create debug session
         self.debug_sessions[session_id] = {
             "code": code,
             "breakpoints": breakpoints,
             "created_at": time.time(),
-            "status": "active"
+            "status": "active",
         }
-        
+
         # For now, return debug session info - actual debugging would integrate with VS Code debugger
         return {
             "session_id": session_id,
             "status": "debug_session_created",
             "breakpoints_set": len(breakpoints),
-            "message": "Debug session created. Use VS Code debugger to step through code."
+            "message": "Debug session created. Use VS Code debugger to step through code.",
         }
-    
-    def _handle_inspect_object(self, args: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_inspect_object(self, args: dict[str, Any]) -> dict[str, Any]:
         """Handle object inspection command."""
         object_name = args.get("object_name", "")
         inspection_depth = args.get("depth", "basic")
-        
+
         if not object_name:
             raise ValueError("No object name provided for inspection")
-        
+
         # Mock object inspection - would integrate with actual AutoCAD object introspection
         inspection_result = {
             "object_name": object_name,
@@ -577,29 +574,41 @@ def draw_rectangle(width=100, height=50):
             "properties": [
                 {"name": "Name", "type": "string", "value": object_name},
                 {"name": "ObjectID", "type": "int", "value": "123456"},
-                {"name": "Layer", "type": "string", "value": "0"}
+                {"name": "Layer", "type": "string", "value": "0"},
             ],
             "methods": [
-                {"name": "Update", "signature": "Update() -> None", "description": "Update the object"},
-                {"name": "Delete", "signature": "Delete() -> None", "description": "Delete the object"},
-                {"name": "Copy", "signature": "Copy() -> Object", "description": "Create a copy of the object"}
+                {
+                    "name": "Update",
+                    "signature": "Update() -> None",
+                    "description": "Update the object",
+                },
+                {
+                    "name": "Delete",
+                    "signature": "Delete() -> None",
+                    "description": "Delete the object",
+                },
+                {
+                    "name": "Copy",
+                    "signature": "Copy() -> Object",
+                    "description": "Create a copy of the object",
+                },
             ],
-            "depth": inspection_depth
+            "depth": inspection_depth,
         }
-        
+
         return inspection_result
-    
-    def _handle_create_project(self, args: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_create_project(self, args: dict[str, Any]) -> dict[str, Any]:
         """Handle create project command."""
         template_id = args.get("template", "basic_automation")
         project_name = args.get("name", "AutoCAD_Project")
         project_path = args.get("path", ".")
-        
+
         if template_id not in self.project_templates:
             raise ValueError(f"Unknown template: {template_id}")
-        
+
         template = self.project_templates[template_id]
-        
+
         # Create project structure
         project_info = {
             "name": project_name,
@@ -607,27 +616,27 @@ def draw_rectangle(width=100, height=50):
             "template_name": template["name"],
             "path": project_path,
             "files_created": list(template["files"].keys()),
-            "created_at": time.time()
+            "created_at": time.time(),
         }
-        
+
         return {
             "success": True,
             "project": project_info,
-            "message": f"Project '{project_name}' created from template '{template['name']}'"
+            "message": f"Project '{project_name}' created from template '{template['name']}'",
         }
-    
-    def _handle_generate_code(self, args: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _handle_generate_code(self, args: dict[str, Any]) -> dict[str, Any]:
         """Handle code generation command."""
         description = args.get("description", "")
         language = args.get("language", "python")
         complexity = args.get("complexity", "basic")
-        
+
         if not description.strip():
             raise ValueError("No description provided for code generation")
-        
+
         # Generate functional code based on description and language
         generated_code = self._generate_functional_code(description, language, complexity)
-        
+
         return {
             "description": description,
             "language": language,
@@ -635,55 +644,57 @@ def draw_rectangle(width=100, height=50):
             "generated_code": generated_code.get(language, generated_code["python"]),
             "suggestions": [
                 "Add error handling",
-                "Include parameter validation", 
-                "Add progress reporting"
-            ]
+                "Include parameter validation",
+                "Add progress reporting",
+            ],
         }
-    
+
     def get_enhanced_intellisense_completions(
         self, context: str, position: int, file_content: str = ""
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get enhanced IntelliSense completions with context awareness.
-        
+
         Args:
             context: Code context around cursor
             position: Cursor position
             file_content: Full file content for better context analysis
-            
+
         Returns:
             List of enhanced completion items
         """
         completions = []
-        
+
         # Analyze context for better completions
         context_lower = context.lower()
-        
+
         # AutoCAD object completions
         if "acad." in context_lower or "autocad" in context_lower:
             completions.extend(self.enhanced_completions["autocad_objects"])
             completions.extend(self.enhanced_completions["drawing_methods"])
-        
+
         # Method-specific completions
         if "draw_" in context_lower:
             completions.extend(self.enhanced_completions["drawing_methods"])
-        
+
         # Add context-specific completions based on file content analysis
         if "import" in file_content and "enhanced_autocad" in file_content:
-            completions.append({
-                "label": "with EnhancedAutoCAD() as acad:",
-                "kind": "snippet",
-                "detail": "AutoCAD context manager",
-                "documentation": "Recommended pattern for AutoCAD automation",
-                "insertText": "with EnhancedAutoCAD() as acad:\\n    ${1:# Your code here}"
-            })
-        
+            completions.append(
+                {
+                    "label": "with EnhancedAutoCAD() as acad:",
+                    "kind": "snippet",
+                    "detail": "AutoCAD context manager",
+                    "documentation": "Recommended pattern for AutoCAD automation",
+                    "insertText": "with EnhancedAutoCAD() as acad:\\n    ${1:# Your code here}",
+                }
+            )
+
         return completions
-    
-    def get_debug_sessions(self) -> Dict[str, Dict[str, Any]]:
+
+    def get_debug_sessions(self) -> dict[str, dict[str, Any]]:
         """Get active debug sessions."""
         return self.debug_sessions.copy()
-    
+
     def stop_debug_session(self, session_id: str) -> bool:
         """Stop a debug session."""
         if session_id in self.debug_sessions:
@@ -692,27 +703,39 @@ def draw_rectangle(width=100, height=50):
             logger.info(f"Debug session {session_id} stopped")
             return True
         return False
-    
-    def get_project_templates(self) -> Dict[str, Dict[str, Any]]:
+
+    def get_project_templates(self) -> dict[str, dict[str, Any]]:
         """Get available project templates."""
         return self.project_templates.copy()
-    
-    def _generate_functional_code(self, description: str, language: str, complexity: str) -> Dict[str, str]:
+
+    def _generate_functional_code(
+        self, description: str, language: str, complexity: str
+    ) -> dict[str, str]:
         """Generate functional code based on description, language, and complexity."""
         # Analyze description to determine the type of AutoCAD operation
         desc_lower = description.lower()
-        
+
         if language == "python":
-            return {"python": self._generate_python_functional_code(description, desc_lower, complexity)}
+            return {
+                "python": self._generate_python_functional_code(description, desc_lower, complexity)
+            }
         elif language == "autolisp":
-            return {"autolisp": self._generate_autolisp_functional_code(description, desc_lower, complexity)}
+            return {
+                "autolisp": self._generate_autolisp_functional_code(
+                    description, desc_lower, complexity
+                )
+            }
         elif language == "vba":
             return {"vba": self._generate_vba_functional_code(description, desc_lower, complexity)}
         else:
             # Default to Python
-            return {"python": self._generate_python_functional_code(description, desc_lower, complexity)}
-    
-    def _generate_python_functional_code(self, description: str, desc_lower: str, complexity: str) -> str:
+            return {
+                "python": self._generate_python_functional_code(description, desc_lower, complexity)
+            }
+
+    def _generate_python_functional_code(
+        self, description: str, desc_lower: str, complexity: str
+    ) -> str:
         """Generate functional Python code for AutoCAD operations."""
         base_template = f'''# Generated Python code for: {description}
 from enhanced_autocad import EnhancedAutoCAD
@@ -725,26 +748,26 @@ def generated_function():
     try:
         with EnhancedAutoCAD() as acad:
 '''
-        
+
         # Determine operation type and generate appropriate code
         if "line" in desc_lower or "draw line" in desc_lower:
-            code_body = '''            # Draw a line
+            code_body = """            # Draw a line
             start_point = [0.0, 0.0, 0.0]
             end_point = [100.0, 100.0, 0.0]
             line = acad.model.AddLine(start_point, end_point)
             logger.info(f"Created line with ID: {line.ObjectID}")
-            return {"success": True, "entity_id": line.ObjectID}'''
-        
+            return {"success": True, "entity_id": line.ObjectID}"""
+
         elif "circle" in desc_lower or "draw circle" in desc_lower:
-            code_body = '''            # Draw a circle
+            code_body = """            # Draw a circle
             center_point = [50.0, 50.0, 0.0]
             radius = 25.0
             circle = acad.model.AddCircle(center_point, radius)
             logger.info(f"Created circle with ID: {circle.ObjectID}")
-            return {"success": True, "entity_id": circle.ObjectID}'''
-        
+            return {"success": True, "entity_id": circle.ObjectID}"""
+
         elif "mesh" in desc_lower or "surface" in desc_lower:
-            code_body = '''            # Create a 3D mesh surface
+            code_body = """            # Create a 3D mesh surface
             m_size, n_size = 4, 4
             vertices = []
             for i in range(m_size):
@@ -756,29 +779,29 @@ def generated_function():
             
             mesh = acad.model.Add3DMesh(m_size, n_size, vertices)
             logger.info(f"Created 3D mesh with ID: {mesh.ObjectID}")
-            return {"success": True, "entity_id": mesh.ObjectID}'''
-        
+            return {"success": True, "entity_id": mesh.ObjectID}"""
+
         elif "extrude" in desc_lower:
-            code_body = '''            # Create an extruded solid
+            code_body = """            # Create an extruded solid
             profile_points = [[0, 0], [100, 0], [100, 100], [0, 100], [0, 0]]
             polyline = acad.model.AddPolyline(profile_points)
             height = 50.0
             solid = acad.model.AddExtrudedSolid(polyline, height)
             logger.info(f"Created extruded solid with ID: {solid.ObjectID}")
-            return {"success": True, "entity_id": solid.ObjectID}'''
-        
+            return {"success": True, "entity_id": solid.ObjectID}"""
+
         else:
             # Generic AutoCAD operation
-            code_body = f'''            # Generic AutoCAD operation: {description}
+            code_body = f"""            # Generic AutoCAD operation: {description}
             logger.info("Executing: {description}")
             # Add your specific AutoCAD operations here
-            return {{"success": True, "message": "Operation completed"}}'''
-        
+            return {{"success": True, "message": "Operation completed"}}"""
+
         imports = ""
         if "mesh" in desc_lower or "surface" in desc_lower:
             imports = "import math\n"
-        
-        return f'''{imports}{base_template}{code_body}
+
+        return f"""{imports}{base_template}{code_body}
     
     except Exception as e:
         logger.error(f"Error in generated function: {{e}}")
@@ -786,39 +809,41 @@ def generated_function():
 
 if __name__ == "__main__":
     result = generated_function()
-    print(f"Result: {{result}}")'''
-    
-    def _generate_autolisp_functional_code(self, description: str, desc_lower: str, complexity: str) -> str:
+    print(f"Result: {{result}}")"""
+
+    def _generate_autolisp_functional_code(
+        self, description: str, desc_lower: str, complexity: str
+    ) -> str:
         """Generate functional AutoLISP code for AutoCAD operations."""
         command_name = "GENERATED-CMD"
-        
+
         if "line" in desc_lower:
             command_name = "DRAWLINE"
-            code_body = '''  ;; Draw a line
+            code_body = """  ;; Draw a line
   (setq start_pt (list 0.0 0.0 0.0))
   (setq end_pt (list 100.0 100.0 0.0))
   (setq line_obj (entmake (list '(0 . "LINE")
                                (cons 10 start_pt)
                                (cons 11 end_pt))))
-  (princ "\\nLine created successfully")'''
-        
+  (princ "\\nLine created successfully")"""
+
         elif "circle" in desc_lower:
             command_name = "DRAWCIRCLE"
-            code_body = '''  ;; Draw a circle
+            code_body = """  ;; Draw a circle
   (setq center_pt (list 50.0 50.0 0.0))
   (setq radius 25.0)
   (setq circle_obj (entmake (list '(0 . "CIRCLE")
                                  (cons 10 center_pt)
                                  (cons 40 radius))))
-  (princ "\\nCircle created successfully")'''
-        
+  (princ "\\nCircle created successfully")"""
+
         else:
-            code_body = f'''  ;; {description}
+            code_body = f"""  ;; {description}
   (princ "\\nExecuting: {description}")
   ;; Add your specific AutoLISP code here
-  (setq result T)'''
-        
-        return f''';; Generated AutoLISP code for: {description}
+  (setq result T)"""
+
+        return f""";; Generated AutoLISP code for: {description}
 (defun C:{command_name} ()
   "AutoCAD command: {description}"
 {code_body}
@@ -828,12 +853,14 @@ if __name__ == "__main__":
 
 ;; Load command
 (princ "\\nLoaded command: {command_name}")
-(princ)'''
-    
-    def _generate_vba_functional_code(self, description: str, desc_lower: str, complexity: str) -> str:
+(princ)"""
+
+    def _generate_vba_functional_code(
+        self, description: str, desc_lower: str, complexity: str
+    ) -> str:
         """Generate functional VBA code for AutoCAD operations."""
         sub_name = "GeneratedMacro"
-        
+
         if "line" in desc_lower:
             sub_name = "DrawLine"
             code_body = '''    ' Draw a line
@@ -847,7 +874,7 @@ if __name__ == "__main__":
     Set lineObj = acDoc.ModelSpace.AddLine(startPoint, endPoint)
     
     MsgBox "Line created successfully"'''
-        
+
         elif "circle" in desc_lower:
             sub_name = "DrawCircle"
             code_body = '''    ' Draw a circle
@@ -861,13 +888,13 @@ if __name__ == "__main__":
     Set circleObj = acDoc.ModelSpace.AddCircle(centerPoint, radius)
     
     MsgBox "Circle created successfully"'''
-        
+
         else:
-            code_body = f'''    ' {description}
+            code_body = f"""    ' {description}
     MsgBox "{description} executed successfully"
-    ' Add your specific VBA code here'''
-        
-        return f''''{description}
+    ' Add your specific VBA code here"""
+
+        return f"""'{description}
 ' Generated VBA code
 
 Sub {sub_name}()
@@ -876,4 +903,4 @@ Sub {sub_name}()
     
 {code_body}
     
-End Sub'''
+End Sub"""

@@ -8,13 +8,13 @@ This module contains sophisticated algorithms for:
 - Triangle mesh processing
 """
 
-from .lscm import LSCMSolver
-from .mesh_utils import extract_triangle_mesh, analyze_mesh_curvature
 from .geodesic import calculate_geodesic_paths
+from .lscm import LSCMSolver
+from .mesh_utils import analyze_mesh_curvature, extract_triangle_mesh
 
 __all__ = [
-    'LSCMSolver',
-    'extract_triangle_mesh', 
-    'analyze_mesh_curvature',
-    'calculate_geodesic_paths'
+    "LSCMSolver",
+    "extract_triangle_mesh",
+    "analyze_mesh_curvature",
+    "calculate_geodesic_paths",
 ]

@@ -5,6 +5,6 @@ This module provides security scanning, vulnerability detection, and
 automated security analysis capabilities.
 """
 
-from .security_scanner import SecurityScanner, SecurityFinding, ScanResult
+from .security_scanner import ScanResult, SecurityFinding, SecurityScanner
 
-__all__ = ['SecurityScanner', 'SecurityFinding', 'ScanResult']
+__all__ = ["SecurityScanner", "SecurityFinding", "ScanResult"]

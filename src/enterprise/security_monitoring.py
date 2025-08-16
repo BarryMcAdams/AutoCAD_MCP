@@ -10,40 +10,40 @@ Enterprise-grade security monitoring with comprehensive audit trails including:
 - Automated security incident response and alerting
 """
 
-import logging
-import time
-import json
 import hashlib
-import hmac
 import ipaddress
-from typing import Dict, Any, List, Optional, Set, Tuple, Union, Callable
-from dataclasses import dataclass, field
-from enum import Enum
-from collections import defaultdict, deque
-import threading
-import re
-import secrets
-from datetime import datetime, timedelta
+import json
+import logging
 import sqlite3
+import threading
+import time
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 # Cryptography imports with graceful fallbacks
 try:
     from cryptography.fernet import Fernet
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
     HAS_CRYPTOGRAPHY = True
 except ImportError:
     HAS_CRYPTOGRAPHY = False
 
 # Import existing components
-from ..enhanced_autocad.performance_monitor import PerformanceMonitor
 from ..enhanced_autocad.error_handler import ErrorHandler
+from ..enhanced_autocad.performance_monitor import PerformanceMonitor
 
 logger = logging.getLogger(__name__)
 
 
 class AuditEventType(Enum):
     """Types of events to audit."""
+
     USER_LOGIN = "user_login"
     USER_LOGOUT = "user_logout"
     USER_FAILED_LOGIN = "user_failed_login"
@@ -70,122 +70,127 @@ class AuditEventType(Enum):
 
 class SecurityThreatLevel(Enum):
     """Security threat severity levels."""
-    INFO = "info"           # Informational, no threat
-    LOW = "low"            # Low-level concern
-    MEDIUM = "medium"      # Moderate threat
-    HIGH = "high"         # High-priority threat
+
+    INFO = "info"  # Informational, no threat
+    LOW = "low"  # Low-level concern
+    MEDIUM = "medium"  # Moderate threat
+    HIGH = "high"  # High-priority threat
     CRITICAL = "critical"  # Critical security threat
 
 
 class ComplianceStandard(Enum):
     """Supported compliance standards."""
-    SOX = "sox"         # Sarbanes-Oxley Act
-    GDPR = "gdpr"       # General Data Protection Regulation
-    HIPAA = "hipaa"     # Health Insurance Portability and Accountability Act
-    PCI_DSS = "pci_dss" # Payment Card Industry Data Security Standard
-    ISO27001 = "iso27001" # ISO/IEC 27001
-    NIST = "nist"       # NIST Cybersecurity Framework
+
+    SOX = "sox"  # Sarbanes-Oxley Act
+    GDPR = "gdpr"  # General Data Protection Regulation
+    HIPAA = "hipaa"  # Health Insurance Portability and Accountability Act
+    PCI_DSS = "pci_dss"  # Payment Card Industry Data Security Standard
+    ISO27001 = "iso27001"  # ISO/IEC 27001
+    NIST = "nist"  # NIST Cybersecurity Framework
 
 
 @dataclass
 class AuditEvent:
     """A single audit event with comprehensive metadata."""
+
     id: str
     event_type: AuditEventType
     timestamp: float
-    
+
     # User and session information
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    
+    user_id: str | None = None
+    session_id: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+
     # Resource information
-    resource_type: Optional[str] = None
-    resource_id: Optional[str] = None
-    resource_path: Optional[str] = None
-    
+    resource_type: str | None = None
+    resource_id: str | None = None
+    resource_path: str | None = None
+
     # Event details
-    action: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
-    
+    action: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
+
     # Security context
-    authentication_method: Optional[str] = None
-    permission_required: Optional[str] = None
+    authentication_method: str | None = None
+    permission_required: str | None = None
     permission_granted: bool = True
-    
+
     # Result information
     success: bool = True
-    error_code: Optional[str] = None
-    error_message: Optional[str] = None
-    
+    error_code: str | None = None
+    error_message: str | None = None
+
     # Compliance tags
-    compliance_tags: Set[ComplianceStandard] = field(default_factory=set)
-    
+    compliance_tags: set[ComplianceStandard] = field(default_factory=set)
+
     # Data sensitivity
-    data_classification: Optional[str] = None
+    data_classification: str | None = None
     contains_pii: bool = False
     contains_financial_data: bool = False
-    
+
     # Forensic information
-    checksum: Optional[str] = None
-    digital_signature: Optional[str] = None
-    chain_hash: Optional[str] = None
+    checksum: str | None = None
+    digital_signature: str | None = None
+    chain_hash: str | None = None
 
 
 @dataclass
 class SecurityAlert:
     """A security alert generated by the monitoring system."""
+
     id: str
     alert_type: str
     threat_level: SecurityThreatLevel
     timestamp: float
-    
+
     # Alert details
     title: str
     description: str
-    affected_resources: List[str] = field(default_factory=list)
-    indicators: List[str] = field(default_factory=list)
-    
+    affected_resources: list[str] = field(default_factory=list)
+    indicators: list[str] = field(default_factory=list)
+
     # Context
-    user_id: Optional[str] = None
-    ip_address: Optional[str] = None
-    related_events: List[str] = field(default_factory=list)
-    
+    user_id: str | None = None
+    ip_address: str | None = None
+    related_events: list[str] = field(default_factory=list)
+
     # Response information
     auto_response_taken: bool = False
-    response_actions: List[str] = field(default_factory=list)
+    response_actions: list[str] = field(default_factory=list)
     acknowledged: bool = False
-    acknowledged_by: Optional[str] = None
-    acknowledged_at: Optional[float] = None
-    
+    acknowledged_by: str | None = None
+    acknowledged_at: float | None = None
+
     # Resolution
     resolved: bool = False
-    resolved_by: Optional[str] = None
-    resolved_at: Optional[float] = None
-    resolution_notes: Optional[str] = None
+    resolved_by: str | None = None
+    resolved_at: float | None = None
+    resolution_notes: str | None = None
 
 
 @dataclass
 class UserBehaviorProfile:
     """User behavior profile for anomaly detection."""
+
     user_id: str
-    
+
     # Activity patterns
-    typical_login_times: List[int] = field(default_factory=list)  # Hours of day
-    typical_ip_addresses: Set[str] = field(default_factory=set)
-    typical_locations: Set[str] = field(default_factory=set)
-    
+    typical_login_times: list[int] = field(default_factory=list)  # Hours of day
+    typical_ip_addresses: set[str] = field(default_factory=set)
+    typical_locations: set[str] = field(default_factory=set)
+
     # Usage patterns
     average_session_duration: float = 0.0
-    typical_files_accessed: Set[str] = field(default_factory=set)
-    typical_commands_used: Set[str] = field(default_factory=set)
-    
+    typical_files_accessed: set[str] = field(default_factory=set)
+    typical_commands_used: set[str] = field(default_factory=set)
+
     # Behavior metrics
     average_api_calls_per_hour: float = 0.0
     average_files_modified_per_session: float = 0.0
     typical_error_rate: float = 0.0
-    
+
     # Historical data
     total_sessions: int = 0
     last_updated: float = field(default_factory=time.time)
@@ -194,11 +199,11 @@ class UserBehaviorProfile:
 
 class AuditLogger:
     """Secure audit logging system with tamper protection."""
-    
-    def __init__(self, db_path: str = "audit.db", encryption_key: Optional[bytes] = None):
+
+    def __init__(self, db_path: str = "audit.db", encryption_key: bytes | None = None):
         """
         Initialize the audit logger.
-        
+
         Args:
             db_path: Path to SQLite database for audit logs
             encryption_key: Key for encrypting sensitive audit data
@@ -206,29 +211,29 @@ class AuditLogger:
         self.db_path = db_path
         self.encryption_key = encryption_key
         self.cipher_suite = None
-        
+
         # Initialize encryption if key provided
         if encryption_key and HAS_CRYPTOGRAPHY:
             self.cipher_suite = Fernet(encryption_key)
-        
+
         # Chain integrity
         self.last_chain_hash = self._generate_genesis_hash()
-        
+
         # Thread safety
         self.lock = threading.RLock()
-        
+
         # Initialize database
         self._initialize_database()
-        
+
         logger.info("Audit logger initialized")
-    
+
     def log_event(self, event: AuditEvent) -> bool:
         """
         Log an audit event securely.
-        
+
         Args:
             event: Audit event to log
-            
+
         Returns:
             True if successfully logged
         """
@@ -237,32 +242,34 @@ class AuditLogger:
                 # Calculate chain hash for integrity
                 event.chain_hash = self._calculate_chain_hash(event)
                 self.last_chain_hash = event.chain_hash
-                
+
                 # Calculate checksum
                 event.checksum = self._calculate_event_checksum(event)
-                
+
                 # Encrypt sensitive data if encryption enabled
                 encrypted_details = self._encrypt_sensitive_data(event.details)
-                
+
                 # Store in database
                 self._store_event_in_db(event, encrypted_details)
-                
+
                 return True
-        
+
         except Exception as e:
             logger.error(f"Failed to log audit event: {e}")
             return False
-    
-    def query_events(self, 
-                    start_time: Optional[float] = None,
-                    end_time: Optional[float] = None,
-                    event_types: Optional[List[AuditEventType]] = None,
-                    user_id: Optional[str] = None,
-                    resource_path: Optional[str] = None,
-                    compliance_standard: Optional[ComplianceStandard] = None) -> List[AuditEvent]:
+
+    def query_events(
+        self,
+        start_time: float | None = None,
+        end_time: float | None = None,
+        event_types: list[AuditEventType] | None = None,
+        user_id: str | None = None,
+        resource_path: str | None = None,
+        compliance_standard: ComplianceStandard | None = None,
+    ) -> list[AuditEvent]:
         """
         Query audit events with filters.
-        
+
         Args:
             start_time: Start timestamp for query
             end_time: End timestamp for query
@@ -270,7 +277,7 @@ class AuditLogger:
             user_id: User ID to filter by
             resource_path: Resource path to filter by
             compliance_standard: Compliance standard to filter by
-            
+
         Returns:
             List of matching audit events
         """
@@ -278,94 +285,97 @@ class AuditLogger:
             with self.lock:
                 query_conditions = []
                 query_params = []
-                
+
                 # Build query conditions
                 if start_time:
                     query_conditions.append("timestamp >= ?")
                     query_params.append(start_time)
-                
+
                 if end_time:
                     query_conditions.append("timestamp <= ?")
                     query_params.append(end_time)
-                
+
                 if event_types:
                     type_placeholders = ",".join("?" * len(event_types))
                     query_conditions.append(f"event_type IN ({type_placeholders})")
                     query_params.extend([et.value for et in event_types])
-                
+
                 if user_id:
                     query_conditions.append("user_id = ?")
                     query_params.append(user_id)
-                
+
                 if resource_path:
                     query_conditions.append("resource_path = ?")
                     query_params.append(resource_path)
-                
+
                 # Build and execute query
                 where_clause = " AND ".join(query_conditions) if query_conditions else "1=1"
                 query = f"SELECT * FROM audit_events WHERE {where_clause} ORDER BY timestamp"
-                
+
                 conn = sqlite3.connect(self.db_path)
                 cursor = conn.cursor()
                 cursor.execute(query, query_params)
-                
+
                 events = []
                 for row in cursor.fetchall():
                     event = self._row_to_audit_event(row)
                     events.append(event)
-                
+
                 conn.close()
                 return events
-        
+
         except Exception as e:
             logger.error(f"Failed to query audit events: {e}")
             return []
-    
-    def verify_chain_integrity(self) -> Tuple[bool, List[str]]:
+
+    def verify_chain_integrity(self) -> tuple[bool, list[str]]:
         """
         Verify the integrity of the audit chain.
-        
+
         Returns:
             Tuple of (is_valid, list_of_issues)
         """
         issues = []
-        
+
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            cursor.execute("SELECT id, chain_hash, checksum, details FROM audit_events ORDER BY timestamp")
-            
+            cursor.execute(
+                "SELECT id, chain_hash, checksum, details FROM audit_events ORDER BY timestamp"
+            )
+
             previous_hash = self._generate_genesis_hash()
-            
+
             for row in cursor.fetchall():
                 event_id, stored_chain_hash, stored_checksum, encrypted_details = row
-                
+
                 # Verify chain hash
                 expected_hash = hashlib.sha256(
-                    (previous_hash + event_id).encode('utf-8')
+                    (previous_hash + event_id).encode("utf-8")
                 ).hexdigest()
-                
+
                 if stored_chain_hash != expected_hash:
                     issues.append(f"Chain integrity violation at event {event_id}")
-                
+
                 previous_hash = stored_chain_hash
-            
+
             conn.close()
-            
+
             is_valid = len(issues) == 0
             return is_valid, issues
-        
+
         except Exception as e:
             logger.error(f"Chain integrity verification failed: {e}")
             return False, [f"Verification error: {e}"]
-    
+
     def _initialize_database(self):
         """Initialize the SQLite database for audit logs."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
-            cursor.execute("""
+
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS audit_events (
                     id TEXT PRIMARY KEY,
                     event_type TEXT NOT NULL,
@@ -394,69 +404,75 @@ class AuditLogger:
                     chain_hash TEXT,
                     created_at REAL DEFAULT (strftime('%s', 'now'))
                 )
-            """)
-            
+            """
+            )
+
             # Create indexes for common queries
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON audit_events(timestamp)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_id ON audit_events(user_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_event_type ON audit_events(event_type)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_resource_path ON audit_events(resource_path)")
-            
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_resource_path ON audit_events(resource_path)"
+            )
+
             conn.commit()
             conn.close()
-        
+
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
             raise
-    
+
     def _generate_genesis_hash(self) -> str:
         """Generate the genesis hash for chain integrity."""
         return hashlib.sha256(b"AUTOCAD_MCP_AUDIT_GENESIS").hexdigest()
-    
+
     def _calculate_chain_hash(self, event: AuditEvent) -> str:
         """Calculate the chain hash for an event."""
         hash_input = self.last_chain_hash + event.id
-        return hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
-    
+        return hashlib.sha256(hash_input.encode("utf-8")).hexdigest()
+
     def _calculate_event_checksum(self, event: AuditEvent) -> str:
         """Calculate checksum for event integrity."""
-        event_data = f"{event.id}{event.event_type.value}{event.timestamp}{event.user_id}{event.action}"
-        return hashlib.sha256(event_data.encode('utf-8')).hexdigest()
-    
-    def _encrypt_sensitive_data(self, data: Dict[str, Any]) -> str:
+        event_data = (
+            f"{event.id}{event.event_type.value}{event.timestamp}{event.user_id}{event.action}"
+        )
+        return hashlib.sha256(event_data.encode("utf-8")).hexdigest()
+
+    def _encrypt_sensitive_data(self, data: dict[str, Any]) -> str:
         """Encrypt sensitive data in event details."""
         if not self.cipher_suite:
             return json.dumps(data)
-        
+
         try:
             json_data = json.dumps(data)
-            encrypted_data = self.cipher_suite.encrypt(json_data.encode('utf-8'))
-            return encrypted_data.decode('utf-8')
+            encrypted_data = self.cipher_suite.encrypt(json_data.encode("utf-8"))
+            return encrypted_data.decode("utf-8")
         except Exception as e:
             logger.warning(f"Failed to encrypt event data: {e}")
             return json.dumps(data)
-    
-    def _decrypt_sensitive_data(self, encrypted_data: str) -> Dict[str, Any]:
+
+    def _decrypt_sensitive_data(self, encrypted_data: str) -> dict[str, Any]:
         """Decrypt sensitive data from event details."""
         if not self.cipher_suite:
             try:
                 return json.loads(encrypted_data)
             except:
                 return {}
-        
+
         try:
-            decrypted_data = self.cipher_suite.decrypt(encrypted_data.encode('utf-8'))
-            return json.loads(decrypted_data.decode('utf-8'))
+            decrypted_data = self.cipher_suite.decrypt(encrypted_data.encode("utf-8"))
+            return json.loads(decrypted_data.decode("utf-8"))
         except Exception as e:
             logger.warning(f"Failed to decrypt event data: {e}")
             return {}
-    
+
     def _store_event_in_db(self, event: AuditEvent, encrypted_details: str):
         """Store an audit event in the database."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        cursor.execute("""
+
+        cursor.execute(
+            """
             INSERT INTO audit_events (
                 id, event_type, timestamp, user_id, session_id, ip_address, user_agent,
                 resource_type, resource_id, resource_path, action, details,
@@ -465,42 +481,82 @@ class AuditLogger:
                 data_classification, contains_pii, contains_financial_data,
                 checksum, digital_signature, chain_hash
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            event.id, event.event_type.value, event.timestamp, event.user_id,
-            event.session_id, event.ip_address, event.user_agent,
-            event.resource_type, event.resource_id, event.resource_path,
-            event.action, encrypted_details, event.authentication_method,
-            event.permission_required, event.permission_granted,
-            event.success, event.error_code, event.error_message,
-            ",".join([tag.value for tag in event.compliance_tags]),
-            event.data_classification, event.contains_pii, event.contains_financial_data,
-            event.checksum, event.digital_signature, event.chain_hash
-        ))
-        
+        """,
+            (
+                event.id,
+                event.event_type.value,
+                event.timestamp,
+                event.user_id,
+                event.session_id,
+                event.ip_address,
+                event.user_agent,
+                event.resource_type,
+                event.resource_id,
+                event.resource_path,
+                event.action,
+                encrypted_details,
+                event.authentication_method,
+                event.permission_required,
+                event.permission_granted,
+                event.success,
+                event.error_code,
+                event.error_message,
+                ",".join([tag.value for tag in event.compliance_tags]),
+                event.data_classification,
+                event.contains_pii,
+                event.contains_financial_data,
+                event.checksum,
+                event.digital_signature,
+                event.chain_hash,
+            ),
+        )
+
         conn.commit()
         conn.close()
-    
-    def _row_to_audit_event(self, row: Tuple) -> AuditEvent:
+
+    def _row_to_audit_event(self, row: tuple) -> AuditEvent:
         """Convert a database row to an AuditEvent object."""
-        (id, event_type, timestamp, user_id, session_id, ip_address, user_agent,
-         resource_type, resource_id, resource_path, action, encrypted_details,
-         authentication_method, permission_required, permission_granted,
-         success, error_code, error_message, compliance_tags_str,
-         data_classification, contains_pii, contains_financial_data,
-         checksum, digital_signature, chain_hash, created_at) = row
-        
+        (
+            id,
+            event_type,
+            timestamp,
+            user_id,
+            session_id,
+            ip_address,
+            user_agent,
+            resource_type,
+            resource_id,
+            resource_path,
+            action,
+            encrypted_details,
+            authentication_method,
+            permission_required,
+            permission_granted,
+            success,
+            error_code,
+            error_message,
+            compliance_tags_str,
+            data_classification,
+            contains_pii,
+            contains_financial_data,
+            checksum,
+            digital_signature,
+            chain_hash,
+            created_at,
+        ) = row
+
         # Decrypt details
         details = self._decrypt_sensitive_data(encrypted_details)
-        
+
         # Parse compliance tags
         compliance_tags = set()
         if compliance_tags_str:
-            for tag_str in compliance_tags_str.split(','):
+            for tag_str in compliance_tags_str.split(","):
                 try:
                     compliance_tags.add(ComplianceStandard(tag_str))
                 except ValueError:
                     pass
-        
+
         return AuditEvent(
             id=id,
             event_type=AuditEventType(event_type),
@@ -526,104 +582,104 @@ class AuditLogger:
             contains_financial_data=bool(contains_financial_data),
             checksum=checksum,
             digital_signature=digital_signature,
-            chain_hash=chain_hash
+            chain_hash=chain_hash,
         )
 
 
 class SecurityMonitor:
     """
     Advanced security monitoring system with real-time threat detection.
-    
+
     Provides comprehensive security monitoring including anomaly detection,
     behavioral analysis, and automated incident response.
     """
-    
+
     def __init__(self, audit_logger: AuditLogger):
         """
         Initialize the security monitor.
-        
+
         Args:
             audit_logger: Audit logger instance for logging security events
         """
         self.audit_logger = audit_logger
         self.performance_monitor = PerformanceMonitor()
         self.error_handler = ErrorHandler()
-        
+
         # User behavior profiles
-        self.user_profiles: Dict[str, UserBehaviorProfile] = {}
-        self.behavioral_baselines: Dict[str, Dict[str, float]] = {}
-        
+        self.user_profiles: dict[str, UserBehaviorProfile] = {}
+        self.behavioral_baselines: dict[str, dict[str, float]] = {}
+
         # Security alerts and incidents
-        self.active_alerts: Dict[str, SecurityAlert] = {}
+        self.active_alerts: dict[str, SecurityAlert] = {}
         self.alert_history: deque = deque(maxlen=10000)
-        
+
         # Threat detection rules
         self.detection_rules = self._initialize_detection_rules()
-        self.ip_blacklist: Set[str] = set()
-        self.ip_whitelist: Set[str] = set()
-        
+        self.ip_blacklist: set[str] = set()
+        self.ip_whitelist: set[str] = set()
+
         # Real-time monitoring
         self.event_buffer: deque = deque(maxlen=1000)
         self.monitoring_enabled = False
-        self.monitoring_thread: Optional[threading.Thread] = None
-        
+        self.monitoring_thread: threading.Thread | None = None
+
         # Configuration
         self.anomaly_threshold = 2.5  # Standard deviations
         self.alert_cooldown_period = 300  # 5 minutes
         self.max_failed_logins = 5
         self.session_timeout = 3600  # 1 hour
-        
+
         # Statistics
         self.security_stats = {
-            'total_events_monitored': 0,
-            'alerts_generated': 0,
-            'threats_detected': 0,
-            'false_positives': 0,
-            'monitoring_start_time': time.time()
+            "total_events_monitored": 0,
+            "alerts_generated": 0,
+            "threats_detected": 0,
+            "false_positives": 0,
+            "monitoring_start_time": time.time(),
         }
-        
+
         logger.info("Security monitor initialized")
-    
+
     def start_monitoring(self):
         """Start real-time security monitoring."""
         if self.monitoring_enabled:
             return
-        
+
         self.monitoring_enabled = True
         self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
         self.monitoring_thread.start()
-        
+
         logger.info("Security monitoring started")
-    
+
     def stop_monitoring(self):
         """Stop real-time security monitoring."""
         self.monitoring_enabled = False
         if self.monitoring_thread:
             self.monitoring_thread.join(timeout=5.0)
-        
+
         logger.info("Security monitoring stopped")
-    
-    def analyze_event(self, event: AuditEvent) -> List[SecurityAlert]:
+
+    def analyze_event(self, event: AuditEvent) -> list[SecurityAlert]:
         """
         Analyze an audit event for security threats.
-        
+
         Args:
             event: Audit event to analyze
-            
+
         Returns:
             List of security alerts generated
         """
         alerts = []
-        
+
         try:
             # Add event to buffer for pattern analysis
             self.event_buffer.append(event)
-            self.security_stats['total_events_monitored'] += 1
-            
+            self.security_stats["total_events_monitored"] += 1
+
             # Update user behavior profile
             if event.user_id:
                 self._update_user_profile(event)
-            
+
             # Apply detection rules
             for rule_name, rule_func in self.detection_rules.items():
                 try:
@@ -631,58 +687,55 @@ class SecurityMonitor:
                     alerts.extend(rule_alerts)
                 except Exception as e:
                     logger.error(f"Detection rule '{rule_name}' failed: {e}")
-            
+
             # Behavioral anomaly detection
             if event.user_id:
                 anomaly_alerts = self._detect_behavioral_anomalies(event)
                 alerts.extend(anomaly_alerts)
-            
+
             # Process and store alerts
             for alert in alerts:
                 self._process_security_alert(alert)
-            
+
         except Exception as e:
             logger.error(f"Event security analysis failed: {e}")
-        
+
         return alerts
-    
-    def generate_compliance_report(self, 
-                                 standard: ComplianceStandard,
-                                 start_time: float,
-                                 end_time: float) -> Dict[str, Any]:
+
+    def generate_compliance_report(
+        self, standard: ComplianceStandard, start_time: float, end_time: float
+    ) -> dict[str, Any]:
         """
         Generate a compliance report for a specific standard.
-        
+
         Args:
             standard: Compliance standard to report on
             start_time: Start time for the report period
             end_time: End time for the report period
-            
+
         Returns:
             Compliance report dictionary
         """
         report = {
-            'standard': standard.value,
-            'report_period': {
-                'start_time': start_time,
-                'end_time': end_time,
-                'duration_hours': (end_time - start_time) / 3600
+            "standard": standard.value,
+            "report_period": {
+                "start_time": start_time,
+                "end_time": end_time,
+                "duration_hours": (end_time - start_time) / 3600,
             },
-            'generated_at': time.time(),
-            'compliance_status': 'unknown',
-            'findings': [],
-            'recommendations': [],
-            'statistics': {}
+            "generated_at": time.time(),
+            "compliance_status": "unknown",
+            "findings": [],
+            "recommendations": [],
+            "statistics": {},
         }
-        
+
         try:
             # Query relevant events
             events = self.audit_logger.query_events(
-                start_time=start_time,
-                end_time=end_time,
-                compliance_standard=standard
+                start_time=start_time, end_time=end_time, compliance_standard=standard
             )
-            
+
             # Generate standard-specific report
             if standard == ComplianceStandard.SOX:
                 report = self._generate_sox_report(report, events)
@@ -693,99 +746,88 @@ class SecurityMonitor:
             elif standard == ComplianceStandard.PCI_DSS:
                 report = self._generate_pci_dss_report(report, events)
             else:
-                report['findings'].append(f"Report generation not implemented for {standard.value}")
-            
+                report["findings"].append(f"Report generation not implemented for {standard.value}")
+
             # Calculate overall compliance status
-            critical_findings = [f for f in report['findings'] if f.get('severity') == 'critical']
+            critical_findings = [f for f in report["findings"] if f.get("severity") == "critical"]
             if critical_findings:
-                report['compliance_status'] = 'non_compliant'
-            elif report['findings']:
-                report['compliance_status'] = 'partially_compliant'
+                report["compliance_status"] = "non_compliant"
+            elif report["findings"]:
+                report["compliance_status"] = "partially_compliant"
             else:
-                report['compliance_status'] = 'compliant'
-        
+                report["compliance_status"] = "compliant"
+
         except Exception as e:
             logger.error(f"Compliance report generation failed: {e}")
-            report['error'] = str(e)
-        
+            report["error"] = str(e)
+
         return report
-    
-    def get_security_dashboard(self) -> Dict[str, Any]:
+
+    def get_security_dashboard(self) -> dict[str, Any]:
         """Get real-time security dashboard data."""
         current_time = time.time()
-        
+
         dashboard = {
-            'timestamp': current_time,
-            'monitoring_status': 'active' if self.monitoring_enabled else 'inactive',
-            'statistics': self.security_stats.copy(),
-            'active_alerts': len(self.active_alerts),
-            'recent_alerts': [],
-            'threat_summary': {
-                'critical': 0,
-                'high': 0,
-                'medium': 0,
-                'low': 0,
-                'info': 0
+            "timestamp": current_time,
+            "monitoring_status": "active" if self.monitoring_enabled else "inactive",
+            "statistics": self.security_stats.copy(),
+            "active_alerts": len(self.active_alerts),
+            "recent_alerts": [],
+            "threat_summary": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
+            "user_activity": {
+                "active_users": len(self.user_profiles),
+                "suspicious_users": 0,
+                "blocked_ips": len(self.ip_blacklist),
             },
-            'user_activity': {
-                'active_users': len(self.user_profiles),
-                'suspicious_users': 0,
-                'blocked_ips': len(self.ip_blacklist)
-            },
-            'system_health': {
-                'events_per_minute': 0,
-                'alert_rate': 0,
-                'false_positive_rate': 0
-            }
+            "system_health": {"events_per_minute": 0, "alert_rate": 0, "false_positive_rate": 0},
         }
-        
+
         try:
             # Get recent alerts (last hour)
             recent_cutoff = current_time - 3600
             recent_alerts = [
-                alert for alert in self.alert_history
-                if alert.timestamp > recent_cutoff
+                alert for alert in self.alert_history if alert.timestamp > recent_cutoff
             ]
-            
-            dashboard['recent_alerts'] = [
+
+            dashboard["recent_alerts"] = [
                 {
-                    'id': alert.id,
-                    'type': alert.alert_type,
-                    'level': alert.threat_level.value,
-                    'title': alert.title,
-                    'timestamp': alert.timestamp,
-                    'acknowledged': alert.acknowledged
+                    "id": alert.id,
+                    "type": alert.alert_type,
+                    "level": alert.threat_level.value,
+                    "title": alert.title,
+                    "timestamp": alert.timestamp,
+                    "acknowledged": alert.acknowledged,
                 }
                 for alert in recent_alerts[-10:]  # Last 10 alerts
             ]
-            
+
             # Count threats by level
             for alert in recent_alerts:
-                dashboard['threat_summary'][alert.threat_level.value] += 1
-            
+                dashboard["threat_summary"][alert.threat_level.value] += 1
+
             # Calculate system health metrics
             if len(self.alert_history) > 0:
-                monitoring_duration = current_time - self.security_stats['monitoring_start_time']
+                monitoring_duration = current_time - self.security_stats["monitoring_start_time"]
                 if monitoring_duration > 0:
-                    dashboard['system_health']['alert_rate'] = (
+                    dashboard["system_health"]["alert_rate"] = (
                         len(self.alert_history) / monitoring_duration * 3600  # alerts per hour
                     )
-            
+
             # Count suspicious users
             suspicious_count = 0
             for profile in self.user_profiles.values():
                 # Simple heuristic for suspicious behavior
-                if hasattr(profile, 'risk_score') and profile.risk_score > 0.7:
+                if hasattr(profile, "risk_score") and profile.risk_score > 0.7:
                     suspicious_count += 1
-            
-            dashboard['user_activity']['suspicious_users'] = suspicious_count
-        
+
+            dashboard["user_activity"]["suspicious_users"] = suspicious_count
+
         except Exception as e:
             logger.error(f"Security dashboard generation failed: {e}")
-            dashboard['error'] = str(e)
-        
+            dashboard["error"] = str(e)
+
         return dashboard
-    
+
     def _monitoring_loop(self):
         """Main monitoring loop for real-time threat detection."""
         while self.monitoring_enabled:
@@ -794,43 +836,46 @@ class SecurityMonitor:
                 self._check_session_timeouts()
                 self._update_threat_intelligence()
                 self._cleanup_old_alerts()
-                
+
                 # Sleep before next iteration
                 time.sleep(10)  # Check every 10 seconds
-                
+
             except Exception as e:
                 logger.error(f"Monitoring loop error: {e}")
                 time.sleep(30)  # Wait longer on error
-    
-    def _initialize_detection_rules(self) -> Dict[str, Callable]:
+
+    def _initialize_detection_rules(self) -> dict[str, Callable]:
         """Initialize threat detection rules."""
         return {
-            'failed_login_attempts': self._detect_failed_login_attempts,
-            'unusual_access_patterns': self._detect_unusual_access_patterns,
-            'suspicious_ip_addresses': self._detect_suspicious_ip_addresses,
-            'privilege_escalation': self._detect_privilege_escalation,
-            'data_exfiltration': self._detect_data_exfiltration,
-            'malicious_code_execution': self._detect_malicious_code_execution,
-            'unauthorized_configuration_changes': self._detect_unauthorized_config_changes
+            "failed_login_attempts": self._detect_failed_login_attempts,
+            "unusual_access_patterns": self._detect_unusual_access_patterns,
+            "suspicious_ip_addresses": self._detect_suspicious_ip_addresses,
+            "privilege_escalation": self._detect_privilege_escalation,
+            "data_exfiltration": self._detect_data_exfiltration,
+            "malicious_code_execution": self._detect_malicious_code_execution,
+            "unauthorized_configuration_changes": self._detect_unauthorized_config_changes,
         }
-    
-    def _detect_failed_login_attempts(self, 
-                                    event: AuditEvent, 
-                                    event_buffer: deque) -> List[SecurityAlert]:
+
+    def _detect_failed_login_attempts(
+        self, event: AuditEvent, event_buffer: deque
+    ) -> list[SecurityAlert]:
         """Detect excessive failed login attempts."""
         alerts = []
-        
+
         if event.event_type != AuditEventType.USER_FAILED_LOGIN:
             return alerts
-        
+
         # Count recent failed attempts from same IP
         recent_failures = [
-            e for e in event_buffer
-            if (e.event_type == AuditEventType.USER_FAILED_LOGIN and
-                e.ip_address == event.ip_address and
-                time.time() - e.timestamp < 300)  # Last 5 minutes
+            e
+            for e in event_buffer
+            if (
+                e.event_type == AuditEventType.USER_FAILED_LOGIN
+                and e.ip_address == event.ip_address
+                and time.time() - e.timestamp < 300
+            )  # Last 5 minutes
         ]
-        
+
         if len(recent_failures) >= self.max_failed_logins:
             alert = SecurityAlert(
                 id=f"failed_login_{event.ip_address}_{int(time.time())}",
@@ -842,29 +887,29 @@ class SecurityMonitor:
                 affected_resources=[event.ip_address],
                 indicators=[f"failed_attempts:{len(recent_failures)}"],
                 ip_address=event.ip_address,
-                related_events=[e.id for e in recent_failures]
+                related_events=[e.id for e in recent_failures],
             )
             alerts.append(alert)
-            
+
             # Auto-response: Add IP to blacklist
             self.ip_blacklist.add(event.ip_address)
             alert.auto_response_taken = True
             alert.response_actions.append(f"Blacklisted IP {event.ip_address}")
-        
+
         return alerts
-    
-    def _detect_unusual_access_patterns(self, 
-                                      event: AuditEvent, 
-                                      event_buffer: deque) -> List[SecurityAlert]:
+
+    def _detect_unusual_access_patterns(
+        self, event: AuditEvent, event_buffer: deque
+    ) -> list[SecurityAlert]:
         """Detect unusual access patterns."""
         alerts = []
-        
+
         if not event.user_id or event.event_type != AuditEventType.FILE_ACCESS:
             return alerts
-        
+
         # Check for access to sensitive files at unusual times
         current_hour = datetime.fromtimestamp(event.timestamp).hour
-        
+
         # Consider 2 AM - 5 AM as unusual hours
         if 2 <= current_hour <= 5:
             # Check if user typically accesses files at this time
@@ -881,21 +926,21 @@ class SecurityMonitor:
                         affected_resources=[event.resource_path or "unknown"],
                         indicators=[f"access_hour:{current_hour}"],
                         user_id=event.user_id,
-                        related_events=[event.id]
+                        related_events=[event.id],
                     )
                     alerts.append(alert)
-        
+
         return alerts
-    
-    def _detect_suspicious_ip_addresses(self, 
-                                      event: AuditEvent, 
-                                      event_buffer: deque) -> List[SecurityAlert]:
+
+    def _detect_suspicious_ip_addresses(
+        self, event: AuditEvent, event_buffer: deque
+    ) -> list[SecurityAlert]:
         """Detect access from suspicious IP addresses."""
         alerts = []
-        
+
         if not event.ip_address:
             return alerts
-        
+
         # Check if IP is in blacklist
         if event.ip_address in self.ip_blacklist:
             alert = SecurityAlert(
@@ -909,10 +954,10 @@ class SecurityMonitor:
                 indicators=[f"blacklisted_ip:{event.ip_address}"],
                 ip_address=event.ip_address,
                 user_id=event.user_id,
-                related_events=[event.id]
+                related_events=[event.id],
             )
             alerts.append(alert)
-        
+
         # Check for private IP accessing from public ranges (simple check)
         try:
             ip = ipaddress.ip_address(event.ip_address)
@@ -921,11 +966,11 @@ class SecurityMonitor:
                 if event.user_id in self.user_profiles:
                     profile = self.user_profiles[event.user_id]
                     typical_private_access = any(
-                        ipaddress.ip_address(addr).is_private 
+                        ipaddress.ip_address(addr).is_private
                         for addr in profile.typical_ip_addresses
                         if addr != event.ip_address
                     )
-                    
+
                     if typical_private_access:
                         alert = SecurityAlert(
                             id=f"external_access_{event.user_id}_{int(time.time())}",
@@ -938,27 +983,27 @@ class SecurityMonitor:
                             indicators=[f"external_ip:{event.ip_address}"],
                             ip_address=event.ip_address,
                             user_id=event.user_id,
-                            related_events=[event.id]
+                            related_events=[event.id],
                         )
                         alerts.append(alert)
-        
+
         except ValueError:
             # Invalid IP address format
             pass
-        
+
         return alerts
-    
+
     def _update_user_profile(self, event: AuditEvent):
         """Update user behavioral profile based on event."""
         if not event.user_id:
             return
-        
+
         # Get or create profile
         if event.user_id not in self.user_profiles:
             self.user_profiles[event.user_id] = UserBehaviorProfile(user_id=event.user_id)
-        
+
         profile = self.user_profiles[event.user_id]
-        
+
         # Update login time patterns
         if event.event_type == AuditEventType.USER_LOGIN:
             hour = datetime.fromtimestamp(event.timestamp).hour
@@ -966,39 +1011,41 @@ class SecurityMonitor:
                 profile.typical_login_times.append(hour)
                 # Keep only recent patterns (last 20 login hours)
                 profile.typical_login_times = profile.typical_login_times[-20:]
-        
+
         # Update IP address patterns
         if event.ip_address:
             profile.typical_ip_addresses.add(event.ip_address)
             # Keep only recent IPs (last 10)
             if len(profile.typical_ip_addresses) > 10:
                 profile.typical_ip_addresses = set(list(profile.typical_ip_addresses)[-10:])
-        
+
         # Update file access patterns
         if event.resource_path and event.event_type == AuditEventType.FILE_ACCESS:
             profile.typical_files_accessed.add(event.resource_path)
             # Keep only recent files (last 100)
             if len(profile.typical_files_accessed) > 100:
                 profile.typical_files_accessed = set(list(profile.typical_files_accessed)[-100:])
-        
+
         # Update profile metadata
         profile.last_updated = time.time()
         profile.profile_version += 1
-    
-    def _detect_behavioral_anomalies(self, event: AuditEvent) -> List[SecurityAlert]:
+
+    def _detect_behavioral_anomalies(self, event: AuditEvent) -> list[SecurityAlert]:
         """Detect behavioral anomalies for a user."""
         alerts = []
-        
+
         if not event.user_id or event.user_id not in self.user_profiles:
             return alerts
-        
+
         profile = self.user_profiles[event.user_id]
-        
+
         # Check for unusual file access
-        if (event.event_type == AuditEventType.FILE_ACCESS and 
-            event.resource_path and 
-            event.resource_path not in profile.typical_files_accessed):
-            
+        if (
+            event.event_type == AuditEventType.FILE_ACCESS
+            and event.resource_path
+            and event.resource_path not in profile.typical_files_accessed
+        ):
+
             alert = SecurityAlert(
                 id=f"unusual_file_{event.user_id}_{int(time.time())}",
                 alert_type="unusual_file_access",
@@ -1009,25 +1056,25 @@ class SecurityMonitor:
                 affected_resources=[event.resource_path],
                 indicators=[f"unusual_file:{event.resource_path}"],
                 user_id=event.user_id,
-                related_events=[event.id]
+                related_events=[event.id],
             )
             alerts.append(alert)
-        
+
         return alerts
-    
+
     def _process_security_alert(self, alert: SecurityAlert):
         """Process and store a security alert."""
         # Add to active alerts
         self.active_alerts[alert.id] = alert
-        
+
         # Add to history
         self.alert_history.append(alert)
-        
+
         # Update statistics
-        self.security_stats['alerts_generated'] += 1
+        self.security_stats["alerts_generated"] += 1
         if alert.threat_level in [SecurityThreatLevel.HIGH, SecurityThreatLevel.CRITICAL]:
-            self.security_stats['threats_detected'] += 1
-        
+            self.security_stats["threats_detected"] += 1
+
         # Log the alert as an audit event
         audit_event = AuditEvent(
             id=f"alert_{alert.id}",
@@ -1037,63 +1084,67 @@ class SecurityMonitor:
             ip_address=alert.ip_address,
             action="security_alert_generated",
             details={
-                'alert_type': alert.alert_type,
-                'threat_level': alert.threat_level.value,
-                'title': alert.title,
-                'description': alert.description,
-                'indicators': alert.indicators,
-                'auto_response_taken': alert.auto_response_taken,
-                'response_actions': alert.response_actions
+                "alert_type": alert.alert_type,
+                "threat_level": alert.threat_level.value,
+                "title": alert.title,
+                "description": alert.description,
+                "indicators": alert.indicators,
+                "auto_response_taken": alert.auto_response_taken,
+                "response_actions": alert.response_actions,
             },
             success=True,
-            compliance_tags={ComplianceStandard.ISO27001, ComplianceStandard.NIST}
+            compliance_tags={ComplianceStandard.ISO27001, ComplianceStandard.NIST},
         )
-        
+
         self.audit_logger.log_event(audit_event)
-        
-        logger.warning(f"Security alert generated: {alert.title} (Level: {alert.threat_level.value})")
-    
+
+        logger.warning(
+            f"Security alert generated: {alert.title} (Level: {alert.threat_level.value})"
+        )
+
     # Additional methods for compliance reporting would be implemented here
     # Each standard has specific requirements and reporting formats
-    
-    def _generate_sox_report(self, report: Dict[str, Any], events: List[AuditEvent]) -> Dict[str, Any]:
+
+    def _generate_sox_report(
+        self, report: dict[str, Any], events: list[AuditEvent]
+    ) -> dict[str, Any]:
         """Generate SOX compliance report."""
         # SOX requires auditing of financial data access and changes
         financial_events = [e for e in events if e.contains_financial_data]
-        
-        report['statistics']['total_events'] = len(events)
-        report['statistics']['financial_data_events'] = len(financial_events)
-        
+
+        report["statistics"]["total_events"] = len(events)
+        report["statistics"]["financial_data_events"] = len(financial_events)
+
         # Check for proper access controls
         unauthorized_access = [
-            e for e in financial_events 
-            if not e.permission_granted or not e.success
+            e for e in financial_events if not e.permission_granted or not e.success
         ]
-        
+
         if unauthorized_access:
-            report['findings'].append({
-                'type': 'unauthorized_financial_access',
-                'severity': 'critical',
-                'count': len(unauthorized_access),
-                'description': 'Unauthorized access to financial data detected'
-            })
-        
+            report["findings"].append(
+                {
+                    "type": "unauthorized_financial_access",
+                    "severity": "critical",
+                    "count": len(unauthorized_access),
+                    "description": "Unauthorized access to financial data detected",
+                }
+            )
+
         return report
-    
-    def _generate_gdpr_report(self, report: Dict[str, Any], events: List[AuditEvent]) -> Dict[str, Any]:
+
+    def _generate_gdpr_report(
+        self, report: dict[str, Any], events: list[AuditEvent]
+    ) -> dict[str, Any]:
         """Generate GDPR compliance report."""
         # GDPR requires auditing of personal data processing
         pii_events = [e for e in events if e.contains_pii]
-        
-        report['statistics']['total_events'] = len(events)
-        report['statistics']['pii_events'] = len(pii_events)
-        
+
+        report["statistics"]["total_events"] = len(events)
+        report["statistics"]["pii_events"] = len(pii_events)
+
         # Check for data subject rights compliance
-        data_export_events = [
-            e for e in events 
-            if e.event_type == AuditEventType.DATA_EXPORT
-        ]
-        
-        report['statistics']['data_exports'] = len(data_export_events)
-        
+        data_export_events = [e for e in events if e.event_type == AuditEventType.DATA_EXPORT]
+
+        report["statistics"]["data_exports"] = len(data_export_events)
+
         return report

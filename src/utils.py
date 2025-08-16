@@ -4,7 +4,7 @@ Utility functions for AutoCAD MCP Server.
 
 import logging
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pythoncom
 import win32com.client
@@ -13,7 +13,7 @@ from pyautocad import Autocad
 logger = logging.getLogger(__name__)
 
 # Type alias for 3D points
-Point3D = List[float]
+Point3D = list[float]
 
 
 def validate_point3d(point: Any) -> Point3D:
@@ -192,7 +192,7 @@ def radians_to_degrees(radians: float) -> float:
     return radians * 180.0 / math.pi
 
 
-def analyze_surface_mesh(entity) -> Dict[str, Any]:
+def analyze_surface_mesh(entity) -> dict[str, Any]:
     """
     Analyze a 3D surface mesh for unfolding operations.
 
@@ -316,7 +316,7 @@ def analyze_surface_mesh(entity) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-def unfold_surface_simple(mesh_analysis: Dict[str, Any], tolerance: float = 0.01) -> Dict[str, Any]:
+def unfold_surface_simple(mesh_analysis: dict[str, Any], tolerance: float = 0.01) -> dict[str, Any]:
     """
     Simple surface unfolding algorithm for 3D meshes.
 
@@ -708,7 +708,7 @@ def get_autocad_instance() -> Autocad:
         raise ConnectionError(f"Cannot connect to AutoCAD: {e}")
 
 
-def extract_entity_properties(entity) -> Dict[str, Any]:
+def extract_entity_properties(entity) -> dict[str, Any]:
     """
     Extract properties from an AutoCAD entity.
 
@@ -762,9 +762,9 @@ def extract_entity_properties(entity) -> Dict[str, Any]:
 def create_error_response(
     error_message: str,
     error_code: str,
-    details: Optional[Dict[str, Any]] = None,
+    details: dict[str, Any] | None = None,
     status_code: int = 500,
-) -> Tuple[Dict[str, Any], int]:
+) -> tuple[dict[str, Any], int]:
     """
     Create standardized error response.
 
@@ -788,8 +788,8 @@ def create_error_response(
 
 
 def create_success_response(
-    data: Dict[str, Any], execution_time: Optional[float] = None
-) -> Dict[str, Any]:
+    data: dict[str, Any], execution_time: float | None = None
+) -> dict[str, Any]:
     """
     Create standardized success response.
 

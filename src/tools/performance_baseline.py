@@ -7,13 +7,14 @@ for the current pyautocad system and validates that Enhanced AutoCAD
 meets or exceeds performance requirements.
 """
 
-import time
+import json
 import logging
 import statistics
-from typing import Dict, List, Any, Callable, Optional
-from dataclasses import dataclass, asdict
-import json
+import time
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +37,14 @@ class PerformanceResult:
 
     test_name: str
     iterations: int
-    durations: List[float]
+    durations: list[float]
     average_duration: float
     median_duration: float
     min_duration: float
     max_duration: float
     std_deviation: float
     success_rate: float
-    errors: List[str]
+    errors: list[str]
     passed: bool
 
 
@@ -66,7 +67,7 @@ class PerformanceBaseline:
         # Performance test definitions
         self.performance_tests = self._define_performance_tests()
 
-    def _define_performance_tests(self) -> List[PerformanceTest]:
+    def _define_performance_tests(self) -> list[PerformanceTest]:
         """
         Define the performance tests to run.
 
@@ -288,7 +289,7 @@ class PerformanceBaseline:
 
         return result
 
-    def run_baseline_tests(self, wrapper_name: str, autocad_wrapper) -> Dict[str, Any]:
+    def run_baseline_tests(self, wrapper_name: str, autocad_wrapper) -> dict[str, Any]:
         """
         Run complete baseline test suite.
 
@@ -351,8 +352,8 @@ class PerformanceBaseline:
         return summary
 
     def compare_performance(
-        self, baseline_results: Dict[str, Any], enhanced_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, baseline_results: dict[str, Any], enhanced_results: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Compare performance between baseline and enhanced versions.
 
@@ -460,7 +461,7 @@ class PerformanceBaseline:
         else:
             return "similar"
 
-    def save_results(self, results: Dict[str, Any], filename: str) -> None:
+    def save_results(self, results: dict[str, Any], filename: str) -> None:
         """
         Save test results to file.
 
@@ -479,7 +480,7 @@ class PerformanceBaseline:
         except Exception as e:
             logger.error(f"Failed to save results: {str(e)}")
 
-    def load_results(self, filename: str) -> Optional[Dict[str, Any]]:
+    def load_results(self, filename: str) -> dict[str, Any] | None:
         """
         Load test results from file.
 
@@ -492,7 +493,7 @@ class PerformanceBaseline:
         input_path = self.results_dir / filename
 
         try:
-            with open(input_path, "r") as f:
+            with open(input_path) as f:
                 results = json.load(f)
 
             logger.info(f"Results loaded from {input_path}")
@@ -502,7 +503,7 @@ class PerformanceBaseline:
             logger.error(f"Failed to load results: {str(e)}")
             return None
 
-    def generate_performance_report(self, results: Dict[str, Any]) -> str:
+    def generate_performance_report(self, results: dict[str, Any]) -> str:
         """
         Generate human-readable performance report.
 

@@ -7,14 +7,12 @@ Enhanced AutoCAD wrapper while maintaining 100% compatibility.
 Includes comprehensive rollback capability and validation.
 """
 
-import os
+import json
+import logging
 import re
 import shutil
-import logging
-from typing import Dict, List, Tuple, Optional
-from pathlib import Path
 import time
-import json
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +104,7 @@ class PyAutoCADMigrator:
             logger.error(f"Backup creation failed: {str(e)}")
             return False
 
-    def _get_python_files(self) -> List[Path]:
+    def _get_python_files(self) -> list[Path]:
         """
         Get all Python files in the project.
 
@@ -125,7 +123,7 @@ class PyAutoCADMigrator:
 
         return [f for f in python_files if f.is_file()]
 
-    def analyze_migration_scope(self) -> Dict[str, any]:
+    def analyze_migration_scope(self) -> dict[str, any]:
         """
         Analyze the scope of migration required.
 
@@ -145,7 +143,7 @@ class PyAutoCADMigrator:
 
         for file_path in python_files:
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
 
                 # Check if file contains pyautocad references
@@ -198,7 +196,7 @@ class PyAutoCADMigrator:
             # Analyze migration scope
             analysis = self.analyze_migration_scope()
 
-            logger.info(f"Migration analysis:")
+            logger.info("Migration analysis:")
             logger.info(f"  - Total files: {analysis['total_files']}")
             logger.info(f"  - Files with pyautocad: {analysis['files_with_pyautocad']}")
             logger.info(f"  - Files to migrate: {len(analysis['files_to_migrate'])}")
@@ -245,7 +243,7 @@ class PyAutoCADMigrator:
             # Save migration log
             self._save_migration_log()
 
-            logger.info(f"Migration completed successfully:")
+            logger.info("Migration completed successfully:")
             logger.info(f"  - Files migrated: {migrated_files}")
             logger.info(f"  - Total changes: {total_changes}")
 
@@ -267,7 +265,7 @@ class PyAutoCADMigrator:
         """
         try:
             # Read original content
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 original_content = f.read()
 
             modified_content = original_content
@@ -311,7 +309,7 @@ class PyAutoCADMigrator:
             # Verify backup metadata
             metadata_file = self.backup_dir / "backup_metadata.json"
             if metadata_file.exists():
-                with open(metadata_file, "r") as f:
+                with open(metadata_file) as f:
                     metadata = json.load(f)
                 logger.info(f"Restoring from backup created at {metadata['backup_timestamp']}")
 
@@ -395,7 +393,7 @@ class PyAutoCADMigrator:
 
             for file_path in python_files:
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         content = f.read()
 
                     # Check for remaining pyautocad references
@@ -438,7 +436,7 @@ class PyAutoCADMigrator:
         except Exception as e:
             logger.warning(f"Failed to save migration log: {str(e)}")
 
-    def get_migration_status(self) -> Dict[str, any]:
+    def get_migration_status(self) -> dict[str, any]:
         """
         Get current migration status.
 
@@ -490,7 +488,7 @@ def main():
     # Execute requested action
     if args.status:
         status = migrator.get_migration_status()
-        print(json.dumps(status, indent=2))
+        logger.info(json.dumps(status, indent=2))
     elif args.rollback:
         success = migrator.rollback_migration()
         exit(0 if success else 1)

@@ -10,4 +10,4 @@ This module provides essential infrastructure components including:
 
 from .lazy_loader import LazyLoader, lazy_import
 
-__all__ = ['LazyLoader', 'lazy_import']
+__all__ = ["LazyLoader", "lazy_import"]

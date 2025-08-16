@@ -7,11 +7,10 @@ for interactive development workflows in VS Code and other environments.
 """
 
 import logging
-import time
 import threading
-from typing import Dict, Any, Optional, List
-from collections import defaultdict
+import time
 import uuid
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +77,7 @@ class ContextManager:
         """
         self.max_sessions = max_sessions
         self.session_timeout = session_timeout
-        self.sessions: Dict[str, SessionContext] = {}
+        self.sessions: dict[str, SessionContext] = {}
         self.sessions_lock = threading.Lock()
 
         # Start cleanup thread
@@ -89,7 +88,7 @@ class ContextManager:
             f"Context Manager initialized (max_sessions: {max_sessions}, timeout: {session_timeout}s)"
         )
 
-    def create_session(self, session_id: Optional[str] = None) -> str:
+    def create_session(self, session_id: str | None = None) -> str:
         """
         Create new interactive session.
 
@@ -114,7 +113,7 @@ class ContextManager:
             logger.info(f"Created new session: {session_id}")
             return session_id
 
-    def get_session_context(self, session_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_session_context(self, session_id: str | None = None) -> dict[str, Any]:
         """
         Get session context, creating if necessary.
 
@@ -146,7 +145,7 @@ class ContextManager:
                 "last_accessed": session.last_accessed,
             }
 
-    def update_session_context(self, session_id: str, context: Dict[str, Any]) -> bool:
+    def update_session_context(self, session_id: str, context: dict[str, Any]) -> bool:
         """
         Update session context.
 
@@ -200,7 +199,7 @@ class ContextManager:
 
             return True
 
-    def get_session_history(self, session_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_session_history(self, session_id: str, limit: int = 10) -> list[dict[str, Any]]:
         """
         Get execution history for session.
 
@@ -239,7 +238,7 @@ class ContextManager:
 
             return False
 
-    def list_sessions(self) -> List[Dict[str, Any]]:
+    def list_sessions(self) -> list[dict[str, Any]]:
         """
         List all active sessions.
 
@@ -264,7 +263,7 @@ class ContextManager:
 
             return sessions_info
 
-    def get_session_statistics(self) -> Dict[str, Any]:
+    def get_session_statistics(self) -> dict[str, Any]:
         """
         Get context manager statistics.
 

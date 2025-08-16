@@ -46,13 +46,15 @@ REGRESSION_TEST_CONFIG = {
         "response_format_validation": True,
         "field_type_validation": True,
         "error_structure_validation": True,
-    }
+    },
 }
+
 
 # Test utilities
 def get_performance_threshold(test_type: str) -> float:
     """Get performance threshold for specific test type."""
     return REGRESSION_TEST_CONFIG["performance_thresholds"].get(f"{test_type}_max_time", 1.0)
+
 
 def get_memory_limit(limit_type: str) -> float:
     """Get memory limit for specific test type."""
